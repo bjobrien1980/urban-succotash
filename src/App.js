@@ -1,0 +1,323 @@
+import React, { useState } from 'react';
+import { Search, Bell, TrendingUp, AlertCircle, Users, MapPin, Clock, ExternalLink, RotateCcw } from 'lucide-react';
+
+const UnionMonitorDashboard = () => {
+  const [selectedUnion, setSelectedUnion] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isSearching, setIsSearching] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Mock market data
+  const marketData = {
+    ironOre: {
+      price: 118.45,
+      changePercent: +2.42,
+      source: 'S&P Global Platts'
+    },
+    companies: [
+      { name: 'BHP Group', price: 42.85, changePercent: +1.78 },
+      { name: 'Rio Tinto', price: 124.20, changePercent: -1.11 },
+      { name: 'Fortescue', price: 18.95, changePercent: +2.43 }
+    ],
+    economicData: [
+      { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up' },
+      { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down' },
+      { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up' }
+    ]
+  };
+
+  const unions = [
+    'Australian Workers Union',
+    'Western Mine Workers Alliance', 
+    'Australian Manufacturing Workers Union',
+    'Electrical Trades Union',
+    'Mining and Energy Union',
+    'Maritime Union of Australia',
+    'Offshore Alliance'
+  ];
+
+  const mockData = [
+    {
+      id: 1,
+      union: 'Mining and Energy Union',
+      category: 'Strike Action',
+      urgency: 'high',
+      title: 'MEU announces potential strike action at Rio Tinto Pilbara operations',
+      summary: 'The Mining and Energy Union has flagged potential industrial action at Rio Tinto\'s Pilbara iron ore operations over ongoing disputes regarding roster changes and safety protocols.',
+      timestamp: '2 hours ago',
+      source: 'ABC News WA',
+      location: 'Pilbara, WA',
+      thumbnail: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
+    },
+    {
+      id: 2,
+      union: 'Australian Workers Union',
+      category: 'Negotiations',
+      urgency: 'medium',
+      title: 'AWU reaches preliminary agreement with BHP on new enterprise bargaining',
+      summary: 'The Australian Workers Union has reached a preliminary agreement with BHP for new enterprise bargaining arrangements covering 3,000 workers across Western Australian iron ore operations.',
+      timestamp: '4 hours ago',
+      source: 'The West Australian',
+      location: 'Perth, WA',
+      thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop'
+    }
+  ];
+
+  const marketNews = [
+    {
+      id: 1,
+      company: 'BHP',
+      title: 'BHP announces $2.8B expansion of South Flank iron ore operation',
+      summary: 'BHP has approved a major expansion of its South Flank mine in the Pilbara, expected to add 40 million tonnes of annual capacity.',
+      timestamp: '3 hours ago',
+      source: 'The West Australian',
+      category: 'Expansion',
+      urgency: 'high',
+      thumbnail: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
+    }
+  ];
+
+  const categories = ['Strike Action', 'Negotiations', 'Policy Change', 'Safety', 'Membership'];
+  
+  const urgencyColors = {
+    high: 'border-red-500 bg-red-50',
+    medium: 'border-yellow-500 bg-yellow-50', 
+    low: 'border-green-500 bg-green-50'
+  };
+
+  const urgencyIcons = {
+    high: <AlertCircle className="w-4 h-4 text-red-500" />,
+    medium: <TrendingUp className="w-4 h-4 text-yellow-500" />,
+    low: <Users className="w-4 h-4 text-green-500" />
+  };
+
+  const filteredData = mockData.filter(item => {
+    if (selectedUnion !== 'all' && item.union !== selectedUnion) return false;
+    if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+    return true;
+  });
+
+  const simulateSearch = async () => {
+    setIsSearching(true);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    setLastUpdated(new Date());
+    setIsSearching(false);
+  };
+
+  const todayStats = {
+    total: mockData.length,
+    high: mockData.filter(item => item.urgency === 'high').length,
+    medium: mockData.filter(item => item.urgency === 'medium').length,
+    low: mockData.filter(item => item.urgency === 'low').length
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="relative h-32 overflow-hidden">
+          <img 
+            src="https://raw.githubusercontent.com/bjobrien1980/urban-succotash/main/u8472312112_Iron_ore_mining_in_the_Pilbara_dump_truck_sunset__99ab4882-e736-4098-8d4e-79b5ab9aaaa4_3.png"
+            alt="Iron ore mining in the Pilbara"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+          <div className="absolute inset-0 flex items-center">
+            <div className="max-w-7xl mx-auto px-4 w-full">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-white">Pilbara Watch</h1>
+                  <p className="text-gray-200 mt-1">Latest market information about Western Australia's iron ore industry</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-200 flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </div>
+                  <button 
+                    onClick={simulateSearch}
+                    disabled={isSearching}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    <RotateCcw className={`w-4 h-4 ${isSearching ? 'animate-spin' : ''}`} />
+                    <span>{isSearching ? 'Searching...' : 'Refresh Now'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Market Overview */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Market Overview</h2>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              
+              {/* Iron Ore Price */}
+              <div className="lg:col-span-1">
+                <h3 className="text-xs font-medium text-gray-600 mb-1">Iron Ore (62% Fe CFR)</h3>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-xl font-bold text-gray-900">${marketData.ironOre.price}</span>
+                  <span className="text-xs text-gray-600">/t</span>
+                </div>
+                <div className="text-xs font-medium text-green-600">
+                  ↗ +{marketData.ironOre.changePercent}%
+                </div>
+                <div className="text-xs text-gray-400">{marketData.ironOre.source}</div>
+              </div>
+
+              {/* Company Stock Prices */}
+              <div className="lg:col-span-2">
+                <h3 className="text-xs font-medium text-gray-600 mb-2">Major Miners (ASX)</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {marketData.companies.map((company, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-xs font-medium text-gray-700">{company.name}</div>
+                      <div className="text-sm font-bold text-gray-900">${company.price}</div>
+                      <div className={`text-xs font-medium ${company.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {company.changePercent >= 0 ? '+' : ''}{company.changePercent}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Economic Indicators */}
+              <div className="lg:col-span-1">
+                <h3 className="text-xs font-medium text-gray-600 mb-2">Key Indicators</h3>
+                <div className="grid grid-cols-3 gap-1">
+                  {marketData.economicData.map((indicator, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-xs font-medium text-gray-700">{indicator.label}</div>
+                      <div className="text-sm font-bold text-gray-900">{indicator.value}</div>
+                      <div className={`text-xs font-medium ${indicator.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                        {indicator.trend === 'up' ? '↗' : '↘'} {indicator.change}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="grid grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-1 mb-1">
+                <Bell className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-medium text-gray-600">Total Updates</span>
+              </div>
+              <p className="text-xl font-bold text-gray-900">{todayStats.total}</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-1 mb-1">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <span className="text-xs font-medium text-gray-600">High Priority</span>
+              </div>
+              <p className="text-xl font-bold text-red-600">{todayStats.high}</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-1 mb-1">
+                <TrendingUp className="w-4 h-4 text-yellow-500" />
+                <span className="text-xs font-medium text-gray-600">Medium Priority</span>
+              </div>
+              <p className="text-xl font-bold text-yellow-600">{todayStats.medium}</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-1 mb-1">
+                <Users className="w-4 h-4 text-green-500" />
+                <span className="text-xs font-medium text-gray-600">Low Priority</span>
+              </div>
+              <p className="text-xl font-bold text-green-600">{todayStats.low}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+          <div className="flex flex-wrap gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Union</label>
+              <select 
+                value={selectedUnion} 
+                onChange={(e) => setSelectedUnion(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Unions</option>
+                {unions.map(union => (
+                  <option key={union} value={union}>{union}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Category</label>
+              <select 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Union Activity Feed */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Union Activity Feed</h2>
+          <div className="space-y-4">
+            {filteredData.map(item => (
+              <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-6`}>
+                <div className="flex items-start space-x-4">
+                  <img 
+                    src={item.thumbnail} 
+                    alt={item.title}
+                    className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      {urgencyIcons[item.urgency]}
+                      <span className="text-sm font-medium text-gray-600">{item.union}</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-sm text-gray-500">{item.category}</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-sm text-gray-500 flex items-center">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {item.location}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                    <p className="text-gray-700 mb-3">{item.summary}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {item.timestamp}
+                        </span>
+                        <span>Source: {item.source}</span>
+                      </div>
+                      <button className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm">
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Read Full Article</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UnionMonitorDashboard;
