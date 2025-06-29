@@ -27,83 +27,10 @@ const UnionMonitorDashboard = () => {
   });
 
   // State for real news data
-const [unionNews, setUnionNews] = useState([]);
-const [marketNews, setMarketNews] = useState([]);
-const [newsLoading, setNewsLoading] = useState(false);
+  const [unionNews, setUnionNews] = useState([]);
+  const [marketNewsData, setMarketNewsData] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
 
-// Function to fetch real union news
-const fetchUnionNews = async () => {
-  try {
-    setNewsLoading(true);
-    const response = await fetch(
-      `https://newsapi.org/v2/everything?q=("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
-    );
-    
-    const data = await response.json();
-    
-    if (data.articles) {
-      const processedNews = data.articles.map((article, index) => ({
-        id: index + 1,
-        union: determineUnion(article.title + ' ' + article.description),
-        category: determineCategory(article.title + ' ' + article.description),
-        urgency: determineUrgency(article.title + ' ' + article.description),
-        title: article.title,
-        summary: article.description || 'No summary available.',
-        timestamp: formatTimestamp(article.publishedAt),
-        source: article.source.name,
-        location: 'WA',
-        thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
-        url: article.url
-      }));
-      
-      setUnionNews(processedNews);
-    }
-  } catch (error) {
-    console.error('Error fetching union news:', error);
-  } finally {
-    setNewsLoading(false);
-  }
-};
-
-// Helper functions to categorize news
-const determineUnion = (text) => {
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('mining and energy union') || lowerText.includes('meu')) return 'Mining and Energy Union';
-  if (lowerText.includes('australian workers union') || lowerText.includes('awu')) return 'Australian Workers Union';
-  if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
-  if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
-  if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
-  return 'Various Unions';
-};
-
-const determineCategory = (text) => {
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
-  if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
-  if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
-  if (lowerText.includes('policy') || lowerText.includes('regulation')) return 'Policy Change';
-  return 'General';
-};
-
-const determineUrgency = (text) => {
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis')) return 'high';
-  if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern')) return 'medium';
-  return 'low';
-};
-
-const formatTimestamp = (publishedAt) => {
-  const now = new Date();
-  const published = new Date(publishedAt);
-  const diffHours = Math.floor((now - published) / (1000 * 60 * 60));
-  
-  if (diffHours < 1) return 'Less than 1 hour ago';
-  if (diffHours < 24) return `${diffHours} hours ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} days ago`;
-};
-
-  
   // Function to fetch real stock data
   const fetchRealData = async () => {
     try {
@@ -144,10 +71,134 @@ const formatTimestamp = (publishedAt) => {
     }
   };
 
-useEffect(() => {
-  fetchRealData();
-  fetchUnionNews();
-}, []);
+  // Function to fetch real union news
+  const fetchUnionNews = async () => {
+    try {
+      setNewsLoading(true);
+      const response = await fetch(
+        `https://newsapi.org/v2/everything?q=("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
+      );
+      
+      const data = await response.json();
+      
+      if (data.articles) {
+        const processedNews = data.articles.map((article, index) => ({
+          id: index + 1,
+          union: determineUnion(article.title + ' ' + article.description),
+          category: determineCategory(article.title + ' ' + article.description),
+          urgency: determineUrgency(article.title + ' ' + article.description),
+          title: article.title,
+          summary: article.description || 'No summary available.',
+          timestamp: formatTimestamp(article.publishedAt),
+          source: article.source.name,
+          location: 'WA',
+          thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+          url: article.url
+        }));
+        
+        setUnionNews(processedNews);
+      }
+    } catch (error) {
+      console.error('Error fetching union news:', error);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  // Function to fetch real market news
+  const fetchMarketNews = async () => {
+    try {
+      const response = await fetch(
+        `https://newsapi.org/v2/everything?q=("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara" OR "mining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
+      );
+      
+      const data = await response.json();
+      
+      if (data.articles) {
+        const processedNews = data.articles.map((article, index) => ({
+          id: index + 1,
+          company: determineCompany(article.title + ' ' + article.description),
+          title: article.title,
+          summary: article.description || 'No summary available.',
+          timestamp: formatTimestamp(article.publishedAt),
+          source: article.source.name,
+          category: determineMarketCategory(article.title + ' ' + article.description),
+          urgency: determineUrgency(article.title + ' ' + article.description),
+          thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
+          url: article.url
+        }));
+        
+        setMarketNewsData(processedNews);
+      }
+    } catch (error) {
+      console.error('Error fetching market news:', error);
+    }
+  };
+
+  // Helper functions to categorize news
+  const determineUnion = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('mining and energy union') || lowerText.includes('meu')) return 'Mining and Energy Union';
+    if (lowerText.includes('australian workers union') || lowerText.includes('awu')) return 'Australian Workers Union';
+    if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
+    if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
+    if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
+    return 'Various Unions';
+  };
+
+  const determineCompany = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('bhp')) return 'BHP';
+    if (lowerText.includes('rio tinto')) return 'Rio Tinto';
+    if (lowerText.includes('fortescue') || lowerText.includes('fmg')) return 'Fortescue';
+    if (lowerText.includes('hancock')) return 'Hancock Iron Ore';
+    if (lowerText.includes('mineral resources') || lowerText.includes('minres')) return 'Mineral Resources';
+    return 'Industry';
+  };
+
+  const determineCategory = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
+    if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
+    if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
+    if (lowerText.includes('policy') || lowerText.includes('regulation')) return 'Policy Change';
+    return 'General';
+  };
+
+  const determineMarketCategory = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('expansion') || lowerText.includes('project') || lowerText.includes('investment')) return 'Expansion';
+    if (lowerText.includes('production') || lowerText.includes('output') || lowerText.includes('shipment')) return 'Production';
+    if (lowerText.includes('environment') || lowerText.includes('renewable') || lowerText.includes('sustainability')) return 'Sustainability';
+    if (lowerText.includes('approval') || lowerText.includes('regulation') || lowerText.includes('government')) return 'Regulatory';
+    if (lowerText.includes('contract') || lowerText.includes('deal') || lowerText.includes('agreement')) return 'Commercial';
+    return 'General';
+  };
+
+  const determineUrgency = (text) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis') || lowerText.includes('emergency')) return 'high';
+    if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern') || lowerText.includes('expansion')) return 'medium';
+    return 'low';
+  };
+
+  const formatTimestamp = (publishedAt) => {
+    const now = new Date();
+    const published = new Date(publishedAt);
+    const diffHours = Math.floor((now - published) / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Less than 1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} days ago`;
+  };
+
+  // Fetch real data when component loads
+  useEffect(() => {
+    fetchRealData();
+    fetchUnionNews();
+    fetchMarketNews();
+  }, []);
 
   const unions = [
     'Australian Workers Union',
@@ -159,7 +210,7 @@ useEffect(() => {
     'Offshore Alliance'
   ];
 
-  // Mock union data - replace with real news later
+  // Mock union data - fallback if real news fails
   const mockData = [
     {
       id: 1,
@@ -170,37 +221,13 @@ useEffect(() => {
       summary: 'The Mining and Energy Union has flagged potential industrial action at Rio Tinto\'s Pilbara iron ore operations over ongoing disputes regarding roster changes and safety protocols.',
       timestamp: '2 hours ago',
       source: 'ABC News WA',
-      location: 'Pilbara, WA',
+      location: 'WA',
       thumbnail: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
-    },
-    {
-      id: 2,
-      union: 'Australian Workers Union',
-      category: 'Negotiations',
-      urgency: 'medium',
-      title: 'AWU reaches preliminary agreement with BHP on new enterprise bargaining',
-      summary: 'The Australian Workers Union has reached a preliminary agreement with BHP for new enterprise bargaining arrangements covering 3,000 workers across Western Australian iron ore operations.',
-      timestamp: '4 hours ago',
-      source: 'The West Australian',
-      location: 'Perth, WA',
-      thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop'
-    },
-    {
-      id: 3,
-      union: 'Maritime Union of Australia',
-      category: 'Policy Change',
-      urgency: 'medium',
-      title: 'MUA calls for enhanced port security measures at Dampier',
-      summary: 'The Maritime Union of Australia is advocating for enhanced security measures at Dampier Port following recent incidents. The union is working with port authorities to implement new safety protocols.',
-      timestamp: '6 hours ago',
-      source: 'Mining News WA',
-      location: 'Dampier, WA',
-      thumbnail: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
     }
   ];
 
-  // Mock market news - replace with real news later
-  const marketNews = [
+  // Mock market news - fallback if real news fails
+  const mockMarketNews = [
     {
       id: 1,
       company: 'BHP',
@@ -211,17 +238,6 @@ useEffect(() => {
       category: 'Expansion',
       urgency: 'high',
       thumbnail: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
-    },
-    {
-      id: 2,
-      company: 'Rio Tinto',
-      title: 'Rio Tinto Pilbara operations achieve record quarterly production',
-      summary: 'Rio Tinto reports record iron ore production of 84.1 million tonnes in Q1 2025 from its Pilbara operations.',
-      timestamp: '5 hours ago',
-      source: 'Mining News WA',
-      category: 'Production',
-      urgency: 'medium',
-      thumbnail: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
     }
   ];
 
@@ -244,13 +260,14 @@ useEffect(() => {
     low: <Users className="w-4 h-4 text-green-500" />
   };
 
+  // Use real news data if available, otherwise fall back to mock data
   const filteredData = (unionNews.length > 0 ? unionNews : mockData).filter(item => {
     if (selectedUnion !== 'all' && item.union !== selectedUnion) return false;
     if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
     return true;
   });
 
-  const filteredMarketNews = marketNews.filter(item => {
+  const filteredMarketNews = (marketNewsData.length > 0 ? marketNewsData : mockMarketNews).filter(item => {
     if (selectedCompany !== 'all' && item.company !== selectedCompany) return false;
     if (selectedMarketCategory !== 'all' && item.category !== selectedMarketCategory) return false;
     return true;
@@ -260,23 +277,25 @@ useEffect(() => {
     setIsSearching(true);
     // Also refresh real data when user clicks refresh
     await fetchRealData();
+    await fetchUnionNews();
+    await fetchMarketNews();
     await new Promise(resolve => setTimeout(resolve, 2000));
     setLastUpdated(new Date());
     setIsSearching(false);
   };
 
   const todayStats = {
-    total: mockData.length,
-    high: mockData.filter(item => item.urgency === 'high').length,
-    medium: mockData.filter(item => item.urgency === 'medium').length,
-    low: mockData.filter(item => item.urgency === 'low').length
+    total: (unionNews.length > 0 ? unionNews : mockData).length,
+    high: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'high').length,
+    medium: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'medium').length,
+    low: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'low').length
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="relative overflow-hidden" style={{height: '500px'}}>
+        <div className="relative h-64 overflow-hidden">
           <img 
             src="https://raw.githubusercontent.com/bjobrien1980/urban-succotash/main/u8472312112_Iron_ore_mining_in_the_Pilbara_dump_truck_sunset__99ab4882-e736-4098-8d4e-79b5ab9aaaa4_3.png"
             alt="Iron ore mining in the Pilbara"
@@ -432,11 +451,11 @@ useEffect(() => {
         </div>
 
         {/* Search Status */}
-        {isSearching && (
+        {(isSearching || newsLoading) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center">
               <RotateCcw className="w-5 h-5 text-blue-600 animate-spin mr-2" />
-              <p className="text-blue-800">Searching for latest union activity across WA iron ore industry...</p>
+              <p className="text-blue-800">Searching for latest union activity and market news...</p>
             </div>
           </div>
         )}
@@ -445,7 +464,10 @@ useEffect(() => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Union Activity Feed */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Union Activity Feed</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Union Activity Feed 
+              {unionNews.length > 0 && <span className="text-sm text-green-600 ml-2">● Live</span>}
+            </h2>
             <div className="space-y-4">
               {filteredData.map(item => (
                 <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-6`}>
@@ -477,7 +499,10 @@ useEffect(() => {
                           </span>
                           <span>Source: {item.source}</span>
                         </div>
-                        <button className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm">
+                        <button 
+                          onClick={() => item.url && window.open(item.url, '_blank')}
+                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm"
+                        >
                           <ExternalLink className="w-4 h-4" />
                           <span>Read Full Article</span>
                         </button>
@@ -499,7 +524,10 @@ useEffect(() => {
 
           {/* Market Watch Feed */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Market Watch - WA Iron Ore Miners</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Market Watch - WA Iron Ore Miners
+              {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live</span>}
+            </h2>
             
             {/* Market Filters */}
             <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
@@ -547,40 +575,3 @@ useEffect(() => {
                         <span className="text-sm font-medium text-blue-600">{item.company}</span>
                         <span className="text-gray-400">•</span>
                         <span className="text-sm text-gray-500">{item.category}</span>
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
-                      <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {item.timestamp}
-                          </span>
-                          <span>Source: {item.source}</span>
-                        </div>
-                        <button className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Read More</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {filteredMarketNews.length === 0 && (
-                <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                  <Search className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                  <h3 className="text-base font-medium text-gray-900 mb-2">No market news found</h3>
-                  <p className="text-gray-600 text-sm">No market updates match your current filters.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default UnionMonitorDashboard;
