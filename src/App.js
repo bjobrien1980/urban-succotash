@@ -209,8 +209,8 @@ const UnionMonitorDashboard = () => {
             <div className="max-w-7xl mx-auto px-4 w-full">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-white">Pilbara Watch</h1>
-                  <p className="text-gray-200 mt-1">Latest market information about Western Australia's iron ore industry</p>
+                  <h1 className="text-6xl font-bold text-white">Pilbara Watch</h1>
+                  <p className="text-xl text-gray-200 mt-2">Latest market information about Western Australia's iron ore industry</p>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="text-sm text-gray-200 flex items-center">
