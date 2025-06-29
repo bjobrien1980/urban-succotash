@@ -7,7 +7,7 @@ const UnionMonitorDashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // State for market data (will be populated with real data)
+  // State for market data
   const [marketData, setMarketData] = useState({
     ironOre: {
       price: 118.45,
@@ -26,12 +26,12 @@ const UnionMonitorDashboard = () => {
     ]
   });
 
-  // State for real news data
+  // State for news data
   const [unionNews, setUnionNews] = useState([]);
   const [marketNewsData, setMarketNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
 
-  // Function to fetch real stock data
+  // Function to fetch stock data
   const fetchRealData = async () => {
     try {
       console.log('Fetching stock data...');
@@ -42,7 +42,6 @@ const UnionMonitorDashboard = () => {
       });
       
       const stockResults = await Promise.all(stockPromises);
-      console.log('Stock results:', stockResults);
       
       const companies = stockResults.map((result, index) => {
         try {
@@ -71,7 +70,6 @@ const UnionMonitorDashboard = () => {
         }
       });
 
-      console.log('Processed companies:', companies);
       setMarketData(prev => ({
         ...prev,
         companies: companies
@@ -82,20 +80,17 @@ const UnionMonitorDashboard = () => {
     }
   };
 
-  // Function to fetch real union news
+  // Function to fetch union news
   const fetchUnionNews = async () => {
     try {
       console.log('Fetching union news...');
       setNewsLoading(true);
       
-      const query = encodeURIComponent('("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")');
+      const query = encodeURIComponent('("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action")');
       const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
-      console.log('Union news URL:', url);
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log('Union news response:', data);
       
       if (data.articles && data.articles.length > 0) {
         const processedNews = data.articles
@@ -114,10 +109,7 @@ const UnionMonitorDashboard = () => {
             url: article.url
           }));
         
-        console.log('Processed union news:', processedNews);
         setUnionNews(processedNews);
-      } else {
-        console.log('No union articles found');
       }
     } catch (error) {
       console.error('Error fetching union news:', error);
@@ -126,19 +118,14 @@ const UnionMonitorDashboard = () => {
     }
   };
 
-  // Function to fetch real market news
+  // Function to fetch market news
   const fetchMarketNews = async () => {
     try {
-      console.log('Fetching market news...');
-      
-      const query = encodeURIComponent('("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara" OR "mining")');
+      const query = encodeURIComponent('("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara")');
       const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
-      console.log('Market news URL:', url);
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log('Market news response:', data);
       
       if (data.articles && data.articles.length > 0) {
         const processedNews = data.articles
@@ -156,25 +143,20 @@ const UnionMonitorDashboard = () => {
             url: article.url
           }));
         
-        console.log('Processed market news:', processedNews);
         setMarketNewsData(processedNews);
-      } else {
-        console.log('No market articles found');
       }
     } catch (error) {
       console.error('Error fetching market news:', error);
     }
   };
 
-  // Helper functions to categorize news
+  // Helper functions
   const determineUnion = (text) => {
     const lowerText = text.toLowerCase();
     if (lowerText.includes('mining and energy union') || lowerText.includes('meu')) return 'Mining and Energy Union';
     if (lowerText.includes('australian workers union') || lowerText.includes('awu')) return 'Australian Workers Union';
     if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
     if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
-    if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
-    if (lowerText.includes('western mine workers alliance') || lowerText.includes('wmwa')) return 'Western Mine Workers Alliance';
     return 'Mining Unions';
   };
 
@@ -183,35 +165,29 @@ const UnionMonitorDashboard = () => {
     if (lowerText.includes('bhp')) return 'BHP';
     if (lowerText.includes('rio tinto')) return 'Rio Tinto';
     if (lowerText.includes('fortescue') || lowerText.includes('fmg')) return 'Fortescue';
-    if (lowerText.includes('hancock')) return 'Hancock Iron Ore';
-    if (lowerText.includes('mineral resources') || lowerText.includes('minres')) return 'Mineral Resources';
     return 'Mining Industry';
   };
 
   const determineCategory = (text) => {
     const lowerText = text.toLowerCase();
     if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
-    if (lowerText.includes('negotiat') || lowerText.includes('bargain') || lowerText.includes('agreement')) return 'Negotiations';
-    if (lowerText.includes('safety') || lowerText.includes('accident') || lowerText.includes('incident')) return 'Safety';
-    if (lowerText.includes('policy') || lowerText.includes('regulation') || lowerText.includes('law')) return 'Policy Change';
-    if (lowerText.includes('member') || lowerText.includes('join')) return 'Membership';
+    if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
+    if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
     return 'General';
   };
 
   const determineMarketCategory = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('expansion') || lowerText.includes('project') || lowerText.includes('investment') || lowerText.includes('billion')) return 'Expansion';
-    if (lowerText.includes('production') || lowerText.includes('output') || lowerText.includes('shipment') || lowerText.includes('record')) return 'Production';
-    if (lowerText.includes('environment') || lowerText.includes('renewable') || lowerText.includes('sustainability') || lowerText.includes('carbon')) return 'Sustainability';
-    if (lowerText.includes('approval') || lowerText.includes('regulation') || lowerText.includes('government') || lowerText.includes('permit')) return 'Regulatory';
-    if (lowerText.includes('contract') || lowerText.includes('deal') || lowerText.includes('agreement') || lowerText.includes('supply')) return 'Commercial';
+    if (lowerText.includes('expansion') || lowerText.includes('project')) return 'Expansion';
+    if (lowerText.includes('production') || lowerText.includes('output')) return 'Production';
+    if (lowerText.includes('environment') || lowerText.includes('renewable')) return 'Sustainability';
     return 'General';
   };
 
   const determineUrgency = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis') || lowerText.includes('emergency') || lowerText.includes('billion')) return 'high';
-    if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern') || lowerText.includes('expansion') || lowerText.includes('record')) return 'medium';
+    if (lowerText.includes('strike') || lowerText.includes('urgent')) return 'high';
+    if (lowerText.includes('negotiat') || lowerText.includes('expansion')) return 'medium';
     return 'low';
   };
 
@@ -223,38 +199,27 @@ const UnionMonitorDashboard = () => {
     if (diffHours < 1) return 'Less than 1 hour ago';
     if (diffHours < 24) return `${diffHours} hours ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
   };
 
-  // Fetch real data when component loads
+  // Load data on component mount
   useEffect(() => {
     fetchRealData();
     fetchUnionNews();
     fetchMarketNews();
   }, []);
 
-  const unions = [
-    'Australian Workers Union',
-    'Western Mine Workers Alliance', 
-    'Australian Manufacturing Workers Union',
-    'Electrical Trades Union',
-    'Mining and Energy Union',
-    'Maritime Union of Australia',
-    'Offshore Alliance'
-  ];
-
-  // Mock data - only used as fallback
+  // Mock data as fallback
   const mockUnionData = [
     {
       id: 'mock_1',
-      union: 'No Live Data',
+      union: 'System Message',
       category: 'General',
       urgency: 'low',
-      title: 'No union news found - check API connection',
-      summary: 'Unable to fetch live union news. Please check the news API connection.',
+      title: 'No live union news available',
+      summary: 'Unable to fetch live union news at this time.',
       timestamp: '1 hour ago',
-      source: 'System Message',
+      source: 'System',
       location: 'WA',
       thumbnail: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
     }
@@ -263,17 +228,19 @@ const UnionMonitorDashboard = () => {
   const mockMarketData = [
     {
       id: 'mock_market_1',
-      company: 'No Live Data',
-      title: 'No market news found - check API connection',
-      summary: 'Unable to fetch live market news. Please check the news API connection.',
+      company: 'System Message',
+      title: 'No live market news available',
+      summary: 'Unable to fetch live market news at this time.',
       timestamp: '1 hour ago',
-      source: 'System Message',
+      source: 'System',
       category: 'General',
       urgency: 'low',
       thumbnail: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
     }
   ];
 
+  // Configuration arrays
+  const unions = ['Australian Workers Union', 'Western Mine Workers Alliance', 'Australian Manufacturing Workers Union', 'Electrical Trades Union', 'Mining and Energy Union', 'Maritime Union of Australia', 'Offshore Alliance'];
   const categories = ['Strike Action', 'Negotiations', 'Policy Change', 'Safety', 'Membership'];
   const marketCategories = ['Expansion', 'Production', 'Sustainability', 'Regulatory', 'Commercial'];
   const companies = ['BHP', 'Rio Tinto', 'Fortescue', 'Hancock Iron Ore', 'Mineral Resources'];
@@ -293,7 +260,7 @@ const UnionMonitorDashboard = () => {
     low: <Users className="w-4 h-4 text-green-500" />
   };
 
-  // Use real news data if available, otherwise fall back to mock data
+  // Data filtering
   const currentUnionData = unionNews.length > 0 ? unionNews : mockUnionData;
   const currentMarketData = marketNewsData.length > 0 ? marketNewsData : mockMarketData;
 
@@ -309,18 +276,15 @@ const UnionMonitorDashboard = () => {
     return true;
   });
 
+  // Refresh function
   const simulateSearch = async () => {
     setIsSearching(true);
-    console.log('Manual refresh triggered...');
-    await Promise.all([
-      fetchRealData(),
-      fetchUnionNews(),
-      fetchMarketNews()
-    ]);
+    await Promise.all([fetchRealData(), fetchUnionNews(), fetchMarketNews()]);
     setLastUpdated(new Date());
     setIsSearching(false);
   };
 
+  // Statistics
   const todayStats = {
     total: currentUnionData.length,
     high: currentUnionData.filter(item => item.urgency === 'high').length,
@@ -330,7 +294,7 @@ const UnionMonitorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - FIXED TO h-96 */}
+      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="relative h-96 overflow-hidden">
           <img 
@@ -497,21 +461,13 @@ const UnionMonitorDashboard = () => {
           </div>
         )}
 
-        {/* Debug Info */}
-        <div className="bg-gray-100 rounded-lg p-3 mb-6 text-xs">
-          <strong>Debug Info:</strong> Union articles: {unionNews.length} | Market articles: {marketNewsData.length} | 
-          Stock data source: {marketData.companies[0]?.source || 'Loading'} | 
-          News loading: {newsLoading ? 'Yes' : 'No'}
-        </div>
-
         {/* News Feed */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Union Activity Feed */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Union Activity Feed 
-              {unionNews.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({unionNews.length} articles)</span>}
-              {unionNews.length === 0 && <span className="text-sm text-red-600 ml-2">● No Live Data</span>}
+              {unionNews.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({unionNews.length})</span>}
             </h2>
             <div className="space-y-4">
               {filteredData.map(item => (
@@ -521,9 +477,6 @@ const UnionMonitorDashboard = () => {
                       src={item.thumbnail} 
                       alt={item.title}
                       className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop';
-                      }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
@@ -559,93 +512,80 @@ const UnionMonitorDashboard = () => {
                   </div>
                 </div>
               ))}
-
-              {filteredData.length === 0 && (
-                <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No union updates found</h3>
-                  <p className="text-gray-600">No union activity matches your current filters. Try adjusting your search criteria.</p>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Market Watch Feed */}
           <div>
-            <h2 className="text-lg font-semibold text-gray
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-             Market Watch - WA Iron Ore Miners
-             {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({marketNewsData.length} articles)</span>}
-             {marketNewsData.length === 0 && <span className="text-sm text-red-600 ml-2">● No Live Data</span>}
-           </h2>
-           
-           {/* Market Filters */}
-           <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-             <div className="flex flex-wrap gap-3">
-               <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
-                 <select 
-                   value={selectedCompany} 
-                   onChange={(e) => setSelectedCompany(e.target.value)}
-                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value="all">All Companies</option>
-                   {companies.map(company => (
-                     <option key={company} value={company}>{company}</option>
-                   ))}
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                 <select 
-                   value={selectedMarketCategory} 
-                   onChange={(e) => setSelectedMarketCategory(e.target.value)}
-                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value="all">All Categories</option>
-                   {marketCategories.map(category => (
-                     <option key={category} value={category}>{category}</option>
-                   ))}
-                 </select>
-               </div>
-             </div>
-           </div>
+              Market Watch - WA Iron Ore Miners
+              {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({marketNewsData.length})</span>}
+            </h2>
+            
+            {/* Market Filters */}
+            <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+              <div className="flex flex-wrap gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
+                  <select 
+                    value={selectedCompany} 
+                    onChange={(e) => setSelectedCompany(e.target.value)}
+                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Companies</option>
+                    {companies.map(company => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                  <select 
+                    value={selectedMarketCategory} 
+                    onChange={(e) => setSelectedMarketCategory(e.target.value)}
+                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Categories</option>
+                    {marketCategories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
 
-           <div className="space-y-4">
-             {filteredMarketNews.map(item => (
-               <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
-                 <div className="flex items-start space-x-3">
-                   <img 
-                     src={item.thumbnail} 
-                     alt={item.title}
-                     className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
-                     onError={(e) => {
-                       e.target.src = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop';
-                     }}
-                   />
-                   <div className="flex-1">
-                     <div className="flex items-center space-x-2 mb-2">
-                       <span className="text-sm font-medium text-blue-600">{item.company}</span>
-                       <span className="text-gray-400">•</span>
-                       <span className="text-sm text-gray-500">{item.category}</span>
-                     </div>
-                     <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
-                     <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
-                     <div className="flex items-center justify-between">
-                       <div className="flex items-center space-x-3 text-xs text-gray-500">
-                         <span className="flex items-center">
-                           <Clock className="w-3 h-3 mr-1" />
-                           {item.timestamp}
-                         </span>
-                         <span>Source: {item.source}</span>
-                       </div>
-                       <button 
-                         onClick={() => item.url && window.open(item.url, '_blank')}
-                         className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs"
-                       >
-                         <ExternalLink className="w-3 h-3" />
-                         <span>Read More</span>
-                       </button>
+            <div className="space-y-4">
+              {filteredMarketNews.map(item => (
+                <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
+                  <div className="flex items-start space-x-3">
+                    <img 
+                      src={item.thumbnail} 
+                      alt={item.title}
+                      className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-medium text-blue-600">{item.company}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-sm text-gray-500">{item.category}</span>
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
+                      <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 text-xs text-gray-500">
+                          <span className="flex items-center">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {item.timestamp}
+                          </span>
+                          <span>Source: {item.source}</span>
+                        </div>
+                        <button 
+                          onClick={() => item.url && window.open(item.url, '_blank')}
+                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Read More</span>
+                        </button>
                      </div>
                    </div>
                  </div>
