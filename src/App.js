@@ -10,14 +10,14 @@ const UnionMonitorDashboard = () => {
   // State for market data (will be populated with real data)
   const [marketData, setMarketData] = useState({
     ironOre: {
-      price: 118.45, // Manual - update this when you want to change it
+      price: 118.45,
       changePercent: +2.42,
       source: 'Manual Update'
     },
     companies: [
-      { name: 'BHP Group', ticker: 'BHP.AX', price: 42.85, changePercent: +1.78, source: 'Loading...' },
-      { name: 'Rio Tinto', ticker: 'RIO.AX', price: 124.20, changePercent: -1.11, source: 'Loading...' },
-      { name: 'Fortescue', ticker: 'FMG.AX', price: 18.95, changePercent: +2.43, source: 'Loading...' }
+      { name: 'BHP Group', ticker: 'BHP.AX', price: '42.85', changePercent: '+1.78', source: 'Loading...' },
+      { name: 'Rio Tinto', ticker: 'RIO.AX', price: '124.20', changePercent: '-1.11', source: 'Loading...' },
+      { name: 'Fortescue', ticker: 'FMG.AX', price: '18.95', changePercent: '+2.43', source: 'Loading...' }
     ],
     economicData: [
       { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
@@ -34,32 +34,44 @@ const UnionMonitorDashboard = () => {
   // Function to fetch real stock data
   const fetchRealData = async () => {
     try {
-      // Fetch ASX stock prices (free Yahoo Finance API)
+      console.log('Fetching stock data...');
       const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
-      const stockPromises = stockSymbols.map(symbol => 
-        fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)
-          .then(res => res.json())
-      );
+      const stockPromises = stockSymbols.map(async symbol => {
+        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
+        return response.json();
+      });
       
       const stockResults = await Promise.all(stockPromises);
+      console.log('Stock results:', stockResults);
       
       const companies = stockResults.map((result, index) => {
-        const data = result.chart.result[0];
-        const currentPrice = data.meta.regularMarketPrice;
-        const previousClose = data.meta.previousClose;
-        const change = ((currentPrice - previousClose) / previousClose * 100);
-        
-        const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
-        return {
-          name: names[index],
-          ticker: stockSymbols[index],
-          price: currentPrice?.toFixed(2),
-          changePercent: change?.toFixed(2),
-          source: 'Yahoo Finance'
-        };
+        try {
+          const data = result.chart.result[0];
+          const currentPrice = data.meta.regularMarketPrice;
+          const previousClose = data.meta.previousClose;
+          const change = ((currentPrice - previousClose) / previousClose * 100);
+          
+          const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
+          return {
+            name: names[index],
+            ticker: stockSymbols[index],
+            price: currentPrice?.toFixed(2) || 'N/A',
+            changePercent: change?.toFixed(2) || '0.00',
+            source: 'Yahoo Finance'
+          };
+        } catch (error) {
+          console.error(`Error processing ${stockSymbols[index]}:`, error);
+          return {
+            name: ['BHP Group', 'Rio Tinto', 'Fortescue'][index],
+            ticker: stockSymbols[index],
+            price: 'N/A',
+            changePercent: '0.00',
+            source: 'Error'
+          };
+        }
       });
 
-      // Update state with real data
+      console.log('Processed companies:', companies);
       setMarketData(prev => ({
         ...prev,
         companies: companies
@@ -67,36 +79,45 @@ const UnionMonitorDashboard = () => {
 
     } catch (error) {
       console.error('Error fetching market data:', error);
-      // Keep using fallback data if API fails
     }
   };
 
   // Function to fetch real union news
   const fetchUnionNews = async () => {
     try {
+      console.log('Fetching union news...');
       setNewsLoading(true);
-      const response = await fetch(
-        `https://newsapi.org/v2/everything?q=("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
-      );
       
+      const query = encodeURIComponent('("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")');
+      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+      
+      console.log('Union news URL:', url);
+      const response = await fetch(url);
       const data = await response.json();
       
-      if (data.articles) {
-        const processedNews = data.articles.map((article, index) => ({
-          id: index + 1,
-          union: determineUnion(article.title + ' ' + article.description),
-          category: determineCategory(article.title + ' ' + article.description),
-          urgency: determineUrgency(article.title + ' ' + article.description),
-          title: article.title,
-          summary: article.description || 'No summary available.',
-          timestamp: formatTimestamp(article.publishedAt),
-          source: article.source.name,
-          location: 'WA',
-          thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
-          url: article.url
-        }));
+      console.log('Union news response:', data);
+      
+      if (data.articles && data.articles.length > 0) {
+        const processedNews = data.articles
+          .filter(article => article.title && article.description)
+          .map((article, index) => ({
+            id: `union_${index}`,
+            union: determineUnion(article.title + ' ' + article.description),
+            category: determineCategory(article.title + ' ' + article.description),
+            urgency: determineUrgency(article.title + ' ' + article.description),
+            title: article.title,
+            summary: article.description || 'No summary available.',
+            timestamp: formatTimestamp(article.publishedAt),
+            source: article.source.name,
+            location: 'WA',
+            thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+            url: article.url
+          }));
         
+        console.log('Processed union news:', processedNews);
         setUnionNews(processedNews);
+      } else {
+        console.log('No union articles found');
       }
     } catch (error) {
       console.error('Error fetching union news:', error);
@@ -108,27 +129,37 @@ const UnionMonitorDashboard = () => {
   // Function to fetch real market news
   const fetchMarketNews = async () => {
     try {
-      const response = await fetch(
-        `https://newsapi.org/v2/everything?q=("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara" OR "mining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
-      );
+      console.log('Fetching market news...');
       
+      const query = encodeURIComponent('("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara" OR "mining")');
+      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+      
+      console.log('Market news URL:', url);
+      const response = await fetch(url);
       const data = await response.json();
       
-      if (data.articles) {
-        const processedNews = data.articles.map((article, index) => ({
-          id: index + 1,
-          company: determineCompany(article.title + ' ' + article.description),
-          title: article.title,
-          summary: article.description || 'No summary available.',
-          timestamp: formatTimestamp(article.publishedAt),
-          source: article.source.name,
-          category: determineMarketCategory(article.title + ' ' + article.description),
-          urgency: determineUrgency(article.title + ' ' + article.description),
-          thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
-          url: article.url
-        }));
+      console.log('Market news response:', data);
+      
+      if (data.articles && data.articles.length > 0) {
+        const processedNews = data.articles
+          .filter(article => article.title && article.description)
+          .map((article, index) => ({
+            id: `market_${index}`,
+            company: determineCompany(article.title + ' ' + article.description),
+            title: article.title,
+            summary: article.description || 'No summary available.',
+            timestamp: formatTimestamp(article.publishedAt),
+            source: article.source.name,
+            category: determineMarketCategory(article.title + ' ' + article.description),
+            urgency: determineUrgency(article.title + ' ' + article.description),
+            thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
+            url: article.url
+          }));
         
+        console.log('Processed market news:', processedNews);
         setMarketNewsData(processedNews);
+      } else {
+        console.log('No market articles found');
       }
     } catch (error) {
       console.error('Error fetching market news:', error);
@@ -143,7 +174,8 @@ const UnionMonitorDashboard = () => {
     if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
     if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
     if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
-    return 'Various Unions';
+    if (lowerText.includes('western mine workers alliance') || lowerText.includes('wmwa')) return 'Western Mine Workers Alliance';
+    return 'Mining Unions';
   };
 
   const determineCompany = (text) => {
@@ -153,32 +185,33 @@ const UnionMonitorDashboard = () => {
     if (lowerText.includes('fortescue') || lowerText.includes('fmg')) return 'Fortescue';
     if (lowerText.includes('hancock')) return 'Hancock Iron Ore';
     if (lowerText.includes('mineral resources') || lowerText.includes('minres')) return 'Mineral Resources';
-    return 'Industry';
+    return 'Mining Industry';
   };
 
   const determineCategory = (text) => {
     const lowerText = text.toLowerCase();
     if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
-    if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
-    if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
-    if (lowerText.includes('policy') || lowerText.includes('regulation')) return 'Policy Change';
+    if (lowerText.includes('negotiat') || lowerText.includes('bargain') || lowerText.includes('agreement')) return 'Negotiations';
+    if (lowerText.includes('safety') || lowerText.includes('accident') || lowerText.includes('incident')) return 'Safety';
+    if (lowerText.includes('policy') || lowerText.includes('regulation') || lowerText.includes('law')) return 'Policy Change';
+    if (lowerText.includes('member') || lowerText.includes('join')) return 'Membership';
     return 'General';
   };
 
   const determineMarketCategory = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('expansion') || lowerText.includes('project') || lowerText.includes('investment')) return 'Expansion';
-    if (lowerText.includes('production') || lowerText.includes('output') || lowerText.includes('shipment')) return 'Production';
-    if (lowerText.includes('environment') || lowerText.includes('renewable') || lowerText.includes('sustainability')) return 'Sustainability';
-    if (lowerText.includes('approval') || lowerText.includes('regulation') || lowerText.includes('government')) return 'Regulatory';
-    if (lowerText.includes('contract') || lowerText.includes('deal') || lowerText.includes('agreement')) return 'Commercial';
+    if (lowerText.includes('expansion') || lowerText.includes('project') || lowerText.includes('investment') || lowerText.includes('billion')) return 'Expansion';
+    if (lowerText.includes('production') || lowerText.includes('output') || lowerText.includes('shipment') || lowerText.includes('record')) return 'Production';
+    if (lowerText.includes('environment') || lowerText.includes('renewable') || lowerText.includes('sustainability') || lowerText.includes('carbon')) return 'Sustainability';
+    if (lowerText.includes('approval') || lowerText.includes('regulation') || lowerText.includes('government') || lowerText.includes('permit')) return 'Regulatory';
+    if (lowerText.includes('contract') || lowerText.includes('deal') || lowerText.includes('agreement') || lowerText.includes('supply')) return 'Commercial';
     return 'General';
   };
 
   const determineUrgency = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis') || lowerText.includes('emergency')) return 'high';
-    if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern') || lowerText.includes('expansion')) return 'medium';
+    if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis') || lowerText.includes('emergency') || lowerText.includes('billion')) return 'high';
+    if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern') || lowerText.includes('expansion') || lowerText.includes('record')) return 'medium';
     return 'low';
   };
 
@@ -190,6 +223,7 @@ const UnionMonitorDashboard = () => {
     if (diffHours < 1) return 'Less than 1 hour ago';
     if (diffHours < 24) return `${diffHours} hours ago`;
     const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
   };
 
@@ -210,33 +244,32 @@ const UnionMonitorDashboard = () => {
     'Offshore Alliance'
   ];
 
-  // Mock union data - fallback if real news fails
-  const mockData = [
+  // Mock data - only used as fallback
+  const mockUnionData = [
     {
-      id: 1,
-      union: 'Mining and Energy Union',
-      category: 'Strike Action',
-      urgency: 'high',
-      title: 'MEU announces potential strike action at Rio Tinto Pilbara operations',
-      summary: 'The Mining and Energy Union has flagged potential industrial action at Rio Tinto\'s Pilbara iron ore operations over ongoing disputes regarding roster changes and safety protocols.',
-      timestamp: '2 hours ago',
-      source: 'ABC News WA',
+      id: 'mock_1',
+      union: 'No Live Data',
+      category: 'General',
+      urgency: 'low',
+      title: 'No union news found - check API connection',
+      summary: 'Unable to fetch live union news. Please check the news API connection.',
+      timestamp: '1 hour ago',
+      source: 'System Message',
       location: 'WA',
       thumbnail: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
     }
   ];
 
-  // Mock market news - fallback if real news fails
-  const mockMarketNews = [
+  const mockMarketData = [
     {
-      id: 1,
-      company: 'BHP',
-      title: 'BHP announces $2.8B expansion of South Flank iron ore operation',
-      summary: 'BHP has approved a major expansion of its South Flank mine in the Pilbara, expected to add 40 million tonnes of annual capacity.',
-      timestamp: '3 hours ago',
-      source: 'The West Australian',
-      category: 'Expansion',
-      urgency: 'high',
+      id: 'mock_market_1',
+      company: 'No Live Data',
+      title: 'No market news found - check API connection',
+      summary: 'Unable to fetch live market news. Please check the news API connection.',
+      timestamp: '1 hour ago',
+      source: 'System Message',
+      category: 'General',
+      urgency: 'low',
       thumbnail: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
     }
   ];
@@ -261,13 +294,16 @@ const UnionMonitorDashboard = () => {
   };
 
   // Use real news data if available, otherwise fall back to mock data
-  const filteredData = (unionNews.length > 0 ? unionNews : mockData).filter(item => {
+  const currentUnionData = unionNews.length > 0 ? unionNews : mockUnionData;
+  const currentMarketData = marketNewsData.length > 0 ? marketNewsData : mockMarketData;
+
+  const filteredData = currentUnionData.filter(item => {
     if (selectedUnion !== 'all' && item.union !== selectedUnion) return false;
     if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
     return true;
   });
 
-  const filteredMarketNews = (marketNewsData.length > 0 ? marketNewsData : mockMarketNews).filter(item => {
+  const filteredMarketNews = currentMarketData.filter(item => {
     if (selectedCompany !== 'all' && item.company !== selectedCompany) return false;
     if (selectedMarketCategory !== 'all' && item.category !== selectedMarketCategory) return false;
     return true;
@@ -275,27 +311,28 @@ const UnionMonitorDashboard = () => {
 
   const simulateSearch = async () => {
     setIsSearching(true);
-    // Also refresh real data when user clicks refresh
-    await fetchRealData();
-    await fetchUnionNews();
-    await fetchMarketNews();
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('Manual refresh triggered...');
+    await Promise.all([
+      fetchRealData(),
+      fetchUnionNews(),
+      fetchMarketNews()
+    ]);
     setLastUpdated(new Date());
     setIsSearching(false);
   };
 
   const todayStats = {
-    total: (unionNews.length > 0 ? unionNews : mockData).length,
-    high: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'high').length,
-    medium: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'medium').length,
-    low: (unionNews.length > 0 ? unionNews : mockData).filter(item => item.urgency === 'low').length
+    total: currentUnionData.length,
+    high: currentUnionData.filter(item => item.urgency === 'high').length,
+    medium: currentUnionData.filter(item => item.urgency === 'medium').length,
+    low: currentUnionData.filter(item => item.urgency === 'low').length
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - FIXED TO h-96 */}
       <div className="bg-white shadow-sm border-b">
-        <div className="relative h-64 overflow-hidden">
+        <div className="relative h-96 overflow-hidden">
           <img 
             src="https://raw.githubusercontent.com/bjobrien1980/urban-succotash/main/u8472312112_Iron_ore_mining_in_the_Pilbara_dump_truck_sunset__99ab4882-e736-4098-8d4e-79b5ab9aaaa4_3.png"
             alt="Iron ore mining in the Pilbara"
@@ -357,8 +394,8 @@ const UnionMonitorDashboard = () => {
                     <div key={index} className="text-center">
                       <div className="text-xs font-medium text-gray-700">{company.name}</div>
                       <div className="text-sm font-bold text-gray-900">${company.price}</div>
-                      <div className={`text-xs font-medium ${company.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {company.changePercent >= 0 ? '+' : ''}{company.changePercent}%
+                      <div className={`text-xs font-medium ${parseFloat(company.changePercent) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {parseFloat(company.changePercent) >= 0 ? '+' : ''}{company.changePercent}%
                       </div>
                     </div>
                   ))}
@@ -460,13 +497,21 @@ const UnionMonitorDashboard = () => {
           </div>
         )}
 
+        {/* Debug Info */}
+        <div className="bg-gray-100 rounded-lg p-3 mb-6 text-xs">
+          <strong>Debug Info:</strong> Union articles: {unionNews.length} | Market articles: {marketNewsData.length} | 
+          Stock data source: {marketData.companies[0]?.source || 'Loading'} | 
+          News loading: {newsLoading ? 'Yes' : 'No'}
+        </div>
+
         {/* News Feed */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Union Activity Feed */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Union Activity Feed 
-              {unionNews.length > 0 && <span className="text-sm text-green-600 ml-2">● Live</span>}
+              {unionNews.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({unionNews.length} articles)</span>}
+              {unionNews.length === 0 && <span className="text-sm text-red-600 ml-2">● No Live Data</span>}
             </h2>
             <div className="space-y-4">
               {filteredData.map(item => (
@@ -476,6 +521,9 @@ const UnionMonitorDashboard = () => {
                       src={item.thumbnail} 
                       alt={item.title}
                       className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop';
+                      }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
@@ -524,58 +572,63 @@ const UnionMonitorDashboard = () => {
 
           {/* Market Watch Feed */}
           <div>
+            <h2 className="text-lg font-semibold text-gray
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Market Watch - WA Iron Ore Miners
-              {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live</span>}
-            </h2>
-            
-            {/* Market Filters */}
-            <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-              <div className="flex flex-wrap gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
-                  <select 
-                    value={selectedCompany} 
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="all">All Companies</option>
-                    {companies.map(company => (
-                      <option key={company} value={company}>{company}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                  <select 
-                    value={selectedMarketCategory} 
-                    onChange={(e) => setSelectedMarketCategory(e.target.value)}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="all">All Categories</option>
-                    {marketCategories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+             Market Watch - WA Iron Ore Miners
+             {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({marketNewsData.length} articles)</span>}
+             {marketNewsData.length === 0 && <span className="text-sm text-red-600 ml-2">● No Live Data</span>}
+           </h2>
+           
+           {/* Market Filters */}
+           <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+             <div className="flex flex-wrap gap-3">
+               <div>
+                 <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
+                 <select 
+                   value={selectedCompany} 
+                   onChange={(e) => setSelectedCompany(e.target.value)}
+                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 >
+                   <option value="all">All Companies</option>
+                   {companies.map(company => (
+                     <option key={company} value={company}>{company}</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                 <select 
+                   value={selectedMarketCategory} 
+                   onChange={(e) => setSelectedMarketCategory(e.target.value)}
+                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 >
+                   <option value="all">All Categories</option>
+                   {marketCategories.map(category => (
+                     <option key={category} value={category}>{category}</option>
+                   ))}
+                 </select>
+               </div>
+             </div>
+           </div>
 
-            <div className="space-y-4">
-              {filteredMarketNews.map(item => (
-                <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
-                  <div className="flex items-start space-x-3">
-                    <img 
-                      src={item.thumbnail} 
-                      alt={item.title}
-                      className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="text-sm font-medium text-blue-600">{item.company}</span>
-                        <span className="text-gray-400">•</span>
-                        <span className="text-sm text-gray-500">{item.category}</span>
-                        </div>
+           <div className="space-y-4">
+             {filteredMarketNews.map(item => (
+               <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
+                 <div className="flex items-start space-x-3">
+                   <img 
+                     src={item.thumbnail} 
+                     alt={item.title}
+                     className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
+                     onError={(e) => {
+                       e.target.src = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop';
+                     }}
+                   />
+                   <div className="flex-1">
+                     <div className="flex items-center space-x-2 mb-2">
+                       <span className="text-sm font-medium text-blue-600">{item.company}</span>
+                       <span className="text-gray-400">•</span>
+                       <span className="text-sm text-gray-500">{item.category}</span>
+                     </div>
                      <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
                      <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
                      <div className="flex items-center justify-between">
