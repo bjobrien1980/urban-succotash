@@ -26,6 +26,84 @@ const UnionMonitorDashboard = () => {
     ]
   });
 
+  // State for real news data
+const [unionNews, setUnionNews] = useState([]);
+const [marketNews, setMarketNews] = useState([]);
+const [newsLoading, setNewsLoading] = useState(false);
+
+// Function to fetch real union news
+const fetchUnionNews = async () => {
+  try {
+    setNewsLoading(true);
+    const response = await fetch(
+      `https://newsapi.org/v2/everything?q=("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action" OR "enterprise bargaining")&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`
+    );
+    
+    const data = await response.json();
+    
+    if (data.articles) {
+      const processedNews = data.articles.map((article, index) => ({
+        id: index + 1,
+        union: determineUnion(article.title + ' ' + article.description),
+        category: determineCategory(article.title + ' ' + article.description),
+        urgency: determineUrgency(article.title + ' ' + article.description),
+        title: article.title,
+        summary: article.description || 'No summary available.',
+        timestamp: formatTimestamp(article.publishedAt),
+        source: article.source.name,
+        location: 'WA',
+        thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+        url: article.url
+      }));
+      
+      setUnionNews(processedNews);
+    }
+  } catch (error) {
+    console.error('Error fetching union news:', error);
+  } finally {
+    setNewsLoading(false);
+  }
+};
+
+// Helper functions to categorize news
+const determineUnion = (text) => {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('mining and energy union') || lowerText.includes('meu')) return 'Mining and Energy Union';
+  if (lowerText.includes('australian workers union') || lowerText.includes('awu')) return 'Australian Workers Union';
+  if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
+  if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
+  if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
+  return 'Various Unions';
+};
+
+const determineCategory = (text) => {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
+  if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
+  if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
+  if (lowerText.includes('policy') || lowerText.includes('regulation')) return 'Policy Change';
+  return 'General';
+};
+
+const determineUrgency = (text) => {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis')) return 'high';
+  if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern')) return 'medium';
+  return 'low';
+};
+
+const formatTimestamp = (publishedAt) => {
+  const now = new Date();
+  const published = new Date(publishedAt);
+  const diffHours = Math.floor((now - published) / (1000 * 60 * 60));
+  
+  if (diffHours < 1) return 'Less than 1 hour ago';
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} days ago`;
+};
+
+  
   // Function to fetch real stock data
   const fetchRealData = async () => {
     try {
@@ -66,10 +144,10 @@ const UnionMonitorDashboard = () => {
     }
   };
 
-  // Fetch real data when component loads
-  useEffect(() => {
-    fetchRealData();
-  }, []);
+useEffect(() => {
+  fetchRealData();
+  fetchUnionNews();
+}, []);
 
   const unions = [
     'Australian Workers Union',
@@ -166,7 +244,7 @@ const UnionMonitorDashboard = () => {
     low: <Users className="w-4 h-4 text-green-500" />
   };
 
-  const filteredData = mockData.filter(item => {
+  const filteredData = (unionNews.length > 0 ? unionNews : mockData).filter(item => {
     if (selectedUnion !== 'all' && item.union !== selectedUnion) return false;
     if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
     return true;
