@@ -37,8 +37,9 @@ const UnionMonitorDashboard = () => {
       console.log('Fetching stock data...');
       const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
       const stockPromises = stockSymbols.map(async symbol => {
-        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-        return response.json();
+        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)}`);
+        const data = await response.json();
+        return JSON.parse(data.contents);
       });
       
       const stockResults = await Promise.all(stockPromises);
@@ -89,8 +90,9 @@ const UnionMonitorDashboard = () => {
       const query = encodeURIComponent('("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action")');
       const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
-      const response = await fetch(url);
-      const data = await response.json();
+      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      const proxyData = await response.json();
+      const data = JSON.parse(proxyData.contents);
       
       if (data.articles && data.articles.length > 0) {
         const processedNews = data.articles
