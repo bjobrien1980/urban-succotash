@@ -198,7 +198,7 @@ const UnionMonitorDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="relative h-32 overflow-hidden">
+        <div className="relative overflow-hidden" style={{height: '500px'}}>
           <img 
             src="https://raw.githubusercontent.com/bjobrien1980/urban-succotash/main/u8472312112_Iron_ore_mining_in_the_Pilbara_dump_truck_sunset__99ab4882-e736-4098-8d4e-79b5ab9aaaa4_3.png"
             alt="Iron ore mining in the Pilbara"
