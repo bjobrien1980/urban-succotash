@@ -7,69 +7,98 @@ const UnionMonitorDashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // State for market data
-  const [marketData, setMarketData] = useState({
-    ironOre: {
-      price: 118.45,
-      changePercent: +2.42,
-      source: 'Manual Update'
-    },
-    companies: [
-      { name: 'BHP Group', ticker: 'BHP.AX', price: '42.85', changePercent: '+1.78', source: 'Loading...' },
-      { name: 'Rio Tinto', ticker: 'RIO.AX', price: '124.20', changePercent: '-1.11', source: 'Loading...' },
-      { name: 'Fortescue', ticker: 'FMG.AX', price: '18.95', changePercent: '+2.43', source: 'Loading...' }
-    ],
-    economicData: [
-      { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
-      { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down', source: 'ABS (Manual)' },
-      { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
-    ]
-  });
+// State for market data
+const [marketData, setMarketData] = useState({
+  ironOre: {
+    price: 118.45,
+    changePercent: +2.42,
+    source: 'Manual Update'
+  },
+  companies: [
+    { name: 'BHP Group', ticker: 'BHP.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
+    { name: 'Rio Tinto', ticker: 'RIO.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
+    { name: 'Fortescue', ticker: 'FMG.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' }
+  ],
+  economicData: [
+    { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
+    { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down', source: 'ABS (Manual)' },
+    { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
+  ]
+});
 
   // State for news data
   const [unionNews, setUnionNews] = useState([]);
   const [marketNewsData, setMarketNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
 
+
   // Function to fetch stock data
-  const fetchRealData = async () => {
-    try {
-      console.log('Fetching stock data...');
-      const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
-      const stockPromises = stockSymbols.map(async symbol => {
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)}`);
-        const data = await response.json();
-        return JSON.parse(data.contents);
-      });
-      
-      const stockResults = await Promise.all(stockPromises);
-      
-      const companies = stockResults.map((result, index) => {
-        try {
-          const data = result.chart.result[0];
-          const currentPrice = data.meta.regularMarketPrice;
-          const previousClose = data.meta.previousClose;
-          const change = ((currentPrice - previousClose) / previousClose * 100);
-          
-          const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
-          return {
-            name: names[index],
-            ticker: stockSymbols[index],
-            price: currentPrice?.toFixed(2) || 'N/A',
-            changePercent: change?.toFixed(2) || '0.00',
-            source: 'Yahoo Finance'
-          };
-        } catch (error) {
-          console.error(`Error processing ${stockSymbols[index]}:`, error);
-          return {
-            name: ['BHP Group', 'Rio Tinto', 'Fortescue'][index],
-            ticker: stockSymbols[index],
-            price: 'N/A',
-            changePercent: '0.00',
-            source: 'Error'
-          };
-        }
-      });
+const fetchRealData = async () => {
+  try {
+    console.log('Fetching stock data...');
+    const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
+    const stockPromises = stockSymbols.map(async symbol => {
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)}`;
+      const response = await fetch(proxyUrl);
+      const proxyData = await response.json();
+      return JSON.parse(proxyData.contents);
+    });
+    
+    const stockResults = await Promise.all(stockPromises);
+    console.log('Stock results:', stockResults);
+    
+    const companies = stockResults.map((result, index) => {
+      try {
+        const data = result.chart.result[0];
+        const currentPrice = data.meta.regularMarketPrice;
+        const previousClose = data.meta.previousClose;
+        const change = ((currentPrice - previousClose) / previousClose * 100);
+        
+        const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
+        return {
+          name: names[index],
+          ticker: stockSymbols[index],
+          price: currentPrice?.toFixed(2) || 'N/A',
+          changePercent: change?.toFixed(2) || '0.00',
+          source: 'Yahoo Finance (Live)'
+        };
+      } catch (error) {
+        console.error(`Error processing ${stockSymbols[index]}:`, error);
+        return {
+          name: ['BHP Group', 'Rio Tinto', 'Fortescue'][index],
+          ticker: stockSymbols[index],
+          price: 'Error',
+          changePercent: '0.00',
+          source: 'API Error'
+        };
+      }
+    });
+
+    console.log('Processed companies:', companies);
+    
+    // Update the state with live data
+    setMarketData(prev => ({
+      ironOre: {
+        price: 118.45, // Keep manual for now since iron ore APIs are expensive
+        changePercent: +2.42,
+        source: 'Manual Update'
+      },
+      companies: companies, // This gets the live stock data
+      economicData: prev.economicData // Keep existing economic data
+    }));
+
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    // If API fails, update source to show it's not working
+    setMarketData(prev => ({
+      ...prev,
+      companies: prev.companies.map(company => ({
+        ...company,
+        source: 'API Failed'
+      }))
+    }));
+  }
+};
 
       setMarketData(prev => ({
         ...prev,
@@ -87,8 +116,8 @@ const UnionMonitorDashboard = () => {
       console.log('Fetching union news...');
       setNewsLoading(true);
       
-      const query = encodeURIComponent('("Western Australia" OR "WA" OR "Pilbara") AND ("union" OR "strike" OR "workers" OR "industrial action")');
-      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+      const query = encodeURIComponent('(Pilbara OR "Tom Price" OR Newman OR Karratha OR "Port Hedland") AND ("mining union" OR "mine workers" OR "industrial action" OR "strike" OR "MEU" OR "AWU") AND ("BHP" OR "Rio Tinto" OR "Fortescue" OR "FMG")');
+      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
       const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
       const proxyData = await response.json();
@@ -123,8 +152,8 @@ const UnionMonitorDashboard = () => {
   // Function to fetch market news
   const fetchMarketNews = async () => {
     try {
-      const query = encodeURIComponent('("BHP" OR "Rio Tinto" OR "Fortescue" OR "iron ore") AND ("Western Australia" OR "Pilbara")');
-      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=15&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+      const query = encodeURIComponent('("BHP Pilbara" OR "Rio Tinto Pilbara" OR "Fortescue Pilbara" OR "FMG Pilbara") AND ("iron ore" OR "mining" OR "expansion" OR "production" OR "workers")');
+      const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
       const response = await fetch(url);
       const data = await response.json();
