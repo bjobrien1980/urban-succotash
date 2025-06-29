@@ -7,24 +7,66 @@ const UnionMonitorDashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Mock market data
-  const marketData = {
-    ironOre: {
-      price: 118.45,
-      changePercent: +2.42,
-      source: 'S&P Global Platts'
-    },
-    companies: [
-      { name: 'BHP Group', price: 42.85, changePercent: +1.78 },
-      { name: 'Rio Tinto', price: 124.20, changePercent: -1.11 },
-      { name: 'Fortescue', price: 18.95, changePercent: +2.43 }
-    ],
-    economicData: [
-      { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up' },
-      { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down' },
-      { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up' }
-    ]
-  };
+// Add this near the top, after the imports
+const [marketData, setMarketData] = useState({
+  ironOre: {
+    price: 118.45, // Manual - update this when you want to change it
+    changePercent: +2.42,
+    source: 'Manual Update'
+  },
+  companies: [],
+  economicData: []
+});
+
+// Add this function to fetch real data
+const fetchRealData = async () => {
+  try {
+    // Fetch ASX stock prices (free Yahoo Finance API)
+    const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
+    const stockPromises = stockSymbols.map(symbol => 
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)
+        .then(res => res.json())
+    );
+    
+    const stockResults = await Promise.all(stockPromises);
+    
+    const companies = stockResults.map((result, index) => {
+      const data = result.chart.result[0];
+      const currentPrice = data.meta.regularMarketPrice;
+      const previousClose = data.meta.previousClose;
+      const change = ((currentPrice - previousClose) / previousClose * 100);
+      
+      const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
+      return {
+        name: names[index],
+        ticker: stockSymbols[index],
+        price: currentPrice?.toFixed(2),
+        changePercent: change?.toFixed(2),
+        source: 'Yahoo Finance'
+      };
+    });
+
+    // Update state with real data
+    setMarketData(prev => ({
+      ...prev,
+      companies: companies,
+      economicData: [
+        { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
+        { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down', source: 'ABS (Manual)' },
+        { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
+      ]
+    }));
+
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    // Keep using fallback data if API fails
+  }
+};
+
+// Add this useEffect to fetch data when component loads
+useEffect(() => {
+  fetchRealData();
+}, []);
 
   const unions = [
     'Australian Workers Union',
