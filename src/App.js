@@ -575,3 +575,43 @@ const UnionMonitorDashboard = () => {
                         <span className="text-sm font-medium text-blue-600">{item.company}</span>
                         <span className="text-gray-400">•</span>
                         <span className="text-sm text-gray-500">{item.category}</span>
+                        </div>
+                     <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
+                     <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
+                     <div className="flex items-center justify-between">
+                       <div className="flex items-center space-x-3 text-xs text-gray-500">
+                         <span className="flex items-center">
+                           <Clock className="w-3 h-3 mr-1" />
+                           {item.timestamp}
+                         </span>
+                         <span>Source: {item.source}</span>
+                       </div>
+                       <button 
+                         onClick={() => item.url && window.open(item.url, '_blank')}
+                         className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs"
+                       >
+                         <ExternalLink className="w-3 h-3" />
+                         <span>Read More</span>
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             ))}
+
+             {filteredMarketNews.length === 0 && (
+               <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                 <Search className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                 <h3 className="text-base font-medium text-gray-900 mb-2">No market news found</h3>
+                 <p className="text-gray-600 text-sm">No market updates match your current filters.</p>
+               </div>
+             )}
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ );
+};
+
+export default UnionMonitorDashboard;
