@@ -7,110 +7,99 @@ const UnionMonitorDashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-// State for market data
-const [marketData, setMarketData] = useState({
-  ironOre: {
-    price: 118.45,
-    changePercent: +2.42,
-    source: 'Manual Update'
-  },
-  companies: [
-    { name: 'BHP Group', ticker: 'BHP.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
-    { name: 'Rio Tinto', ticker: 'RIO.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
-    { name: 'Fortescue', ticker: 'FMG.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' }
-  ],
-  economicData: [
-    { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
-    { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down', source: 'ABS (Manual)' },
-    { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
-  ]
-});
+  // State for market data
+  const [marketData, setMarketData] = useState({
+    ironOre: {
+      price: 118.45,
+      changePercent: +2.42,
+      source: 'Manual Update'
+    },
+    companies: [
+      { name: 'BHP Group', ticker: 'BHP.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
+      { name: 'Rio Tinto', ticker: 'RIO.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
+      { name: 'Fortescue', ticker: 'FMG.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' }
+    ],
+    economicData: [
+      { label: 'CPI', value: '3.4%', change: '+0.2%', trend: 'up', source: 'ABS (Manual)' },
+      { label: 'WA Unemp', value: '3.8%', change: '-0.1%', trend: 'down', source: 'ABS (Manual)' },
+      { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
+    ]
+  });
 
   // State for news data
   const [unionNews, setUnionNews] = useState([]);
   const [marketNewsData, setMarketNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
 
-
   // Function to fetch stock data
-const fetchRealData = async () => {
-  try {
-    console.log('Fetching stock data...');
-    const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
-    const stockPromises = stockSymbols.map(async symbol => {
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)}`;
-      const response = await fetch(proxyUrl);
-      const proxyData = await response.json();
-      return JSON.parse(proxyData.contents);
-    });
-    
-    const stockResults = await Promise.all(stockPromises);
-    console.log('Stock results:', stockResults);
-    
-    const companies = stockResults.map((result, index) => {
-      try {
-        const data = result.chart.result[0];
-        const currentPrice = data.meta.regularMarketPrice;
-        const previousClose = data.meta.previousClose;
-        const change = ((currentPrice - previousClose) / previousClose * 100);
-        
-        const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
-        return {
-          name: names[index],
-          ticker: stockSymbols[index],
-          price: currentPrice?.toFixed(2) || 'N/A',
-          changePercent: change?.toFixed(2) || '0.00',
-          source: 'Yahoo Finance (Live)'
-        };
-      } catch (error) {
-        console.error(`Error processing ${stockSymbols[index]}:`, error);
-        return {
-          name: ['BHP Group', 'Rio Tinto', 'Fortescue'][index],
-          ticker: stockSymbols[index],
-          price: 'Error',
-          changePercent: '0.00',
-          source: 'API Error'
-        };
-      }
-    });
+  const fetchRealData = async () => {
+    try {
+      console.log('Fetching stock data...');
+      const stockSymbols = ['BHP.AX', 'RIO.AX', 'FMG.AX'];
+      const stockPromises = stockSymbols.map(async symbol => {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)}`;
+        const response = await fetch(proxyUrl);
+        const proxyData = await response.json();
+        return JSON.parse(proxyData.contents);
+      });
+      
+      const stockResults = await Promise.all(stockPromises);
+      console.log('Stock results:', stockResults);
+      
+      const companies = stockResults.map((result, index) => {
+        try {
+          const data = result.chart.result[0];
+          const currentPrice = data.meta.regularMarketPrice;
+          const previousClose = data.meta.previousClose;
+          const change = ((currentPrice - previousClose) / previousClose * 100);
+          
+          const names = ['BHP Group', 'Rio Tinto', 'Fortescue'];
+          return {
+            name: names[index],
+            ticker: stockSymbols[index],
+            price: currentPrice?.toFixed(2) || 'N/A',
+            changePercent: change?.toFixed(2) || '0.00',
+            source: 'Yahoo Finance (Live)'
+          };
+        } catch (error) {
+          console.error(`Error processing ${stockSymbols[index]}:`, error);
+          return {
+            name: ['BHP Group', 'Rio Tinto', 'Fortescue'][index],
+            ticker: stockSymbols[index],
+            price: 'Error',
+            changePercent: '0.00',
+            source: 'API Error'
+          };
+        }
+      });
 
-    console.log('Processed companies:', companies);
-    
-    // Update the state with live data
-    setMarketData(prev => ({
-      ironOre: {
-        price: 118.45, // Keep manual for now since iron ore APIs are expensive
-        changePercent: +2.42,
-        source: 'Manual Update'
-      },
-      companies: companies, // This gets the live stock data
-      economicData: prev.economicData // Keep existing economic data
-    }));
-
-  } catch (error) {
-    console.error('Error fetching market data:', error);
-    // If API fails, update source to show it's not working
-    setMarketData(prev => ({
-      ...prev,
-      companies: prev.companies.map(company => ({
-        ...company,
-        source: 'API Failed'
-      }))
-    }));
-  }
-};
-
+      console.log('Processed companies:', companies);
+      
+      // Update the state with live data
       setMarketData(prev => ({
-        ...prev,
-        companies: companies
+        ironOre: {
+          price: 118.45, // Keep manual for now since iron ore APIs are expensive
+          changePercent: +2.42,
+          source: 'Manual Update'
+        },
+        companies: companies, // This gets the live stock data
+        economicData: prev.economicData // Keep existing economic data
       }));
 
     } catch (error) {
       console.error('Error fetching market data:', error);
+      // If API fails, update source to show it's not working
+      setMarketData(prev => ({
+        ...prev,
+        companies: prev.companies.map(company => ({
+          ...company,
+          source: 'API Failed'
+        }))
+      }));
     }
   };
 
-  // Function to fetch union news
+  // Function to fetch union news with targeted searches
   const fetchUnionNews = async () => {
     try {
       console.log('Fetching union news...');
@@ -119,9 +108,12 @@ const fetchRealData = async () => {
       const query = encodeURIComponent('(Pilbara OR "Tom Price" OR Newman OR Karratha OR "Port Hedland") AND ("mining union" OR "mine workers" OR "industrial action" OR "strike" OR "MEU" OR "AWU") AND ("BHP" OR "Rio Tinto" OR "Fortescue" OR "FMG")');
       const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
       const proxyData = await response.json();
       const data = JSON.parse(proxyData.contents);
+      
+      console.log('Union news response:', data);
       
       if (data.articles && data.articles.length > 0) {
         const processedNews = data.articles
@@ -140,7 +132,10 @@ const fetchRealData = async () => {
             url: article.url
           }));
         
+        console.log('Processed union news:', processedNews);
         setUnionNews(processedNews);
+      } else {
+        console.log('No union articles found');
       }
     } catch (error) {
       console.error('Error fetching union news:', error);
@@ -149,14 +144,20 @@ const fetchRealData = async () => {
     }
   };
 
-  // Function to fetch market news
+  // Function to fetch market news with targeted searches
   const fetchMarketNews = async () => {
     try {
+      console.log('Fetching market news...');
+      
       const query = encodeURIComponent('("BHP Pilbara" OR "Rio Tinto Pilbara" OR "Fortescue Pilbara" OR "FMG Pilbara") AND ("iron ore" OR "mining" OR "expansion" OR "production" OR "workers")');
       const url = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
       
-      const response = await fetch(url);
-      const data = await response.json();
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      const proxyData = await response.json();
+      const data = JSON.parse(proxyData.contents);
+      
+      console.log('Market news response:', data);
       
       if (data.articles && data.articles.length > 0) {
         const processedNews = data.articles
@@ -174,20 +175,25 @@ const fetchRealData = async () => {
             url: article.url
           }));
         
+        console.log('Processed market news:', processedNews);
         setMarketNewsData(processedNews);
+      } else {
+        console.log('No market articles found');
       }
     } catch (error) {
       console.error('Error fetching market news:', error);
     }
   };
 
-  // Helper functions
+  // Helper functions to categorize news
   const determineUnion = (text) => {
     const lowerText = text.toLowerCase();
     if (lowerText.includes('mining and energy union') || lowerText.includes('meu')) return 'Mining and Energy Union';
     if (lowerText.includes('australian workers union') || lowerText.includes('awu')) return 'Australian Workers Union';
     if (lowerText.includes('maritime union') || lowerText.includes('mua')) return 'Maritime Union of Australia';
     if (lowerText.includes('electrical trades union') || lowerText.includes('etu')) return 'Electrical Trades Union';
+    if (lowerText.includes('manufacturing workers union') || lowerText.includes('amwu')) return 'Australian Manufacturing Workers Union';
+    if (lowerText.includes('western mine workers alliance') || lowerText.includes('wmwa')) return 'Western Mine Workers Alliance';
     return 'Mining Unions';
   };
 
@@ -196,29 +202,35 @@ const fetchRealData = async () => {
     if (lowerText.includes('bhp')) return 'BHP';
     if (lowerText.includes('rio tinto')) return 'Rio Tinto';
     if (lowerText.includes('fortescue') || lowerText.includes('fmg')) return 'Fortescue';
+    if (lowerText.includes('hancock')) return 'Hancock Iron Ore';
+    if (lowerText.includes('mineral resources') || lowerText.includes('minres')) return 'Mineral Resources';
     return 'Mining Industry';
   };
 
   const determineCategory = (text) => {
     const lowerText = text.toLowerCase();
     if (lowerText.includes('strike') || lowerText.includes('industrial action')) return 'Strike Action';
-    if (lowerText.includes('negotiat') || lowerText.includes('bargain')) return 'Negotiations';
-    if (lowerText.includes('safety') || lowerText.includes('accident')) return 'Safety';
+    if (lowerText.includes('negotiat') || lowerText.includes('bargain') || lowerText.includes('agreement')) return 'Negotiations';
+    if (lowerText.includes('safety') || lowerText.includes('accident') || lowerText.includes('incident')) return 'Safety';
+    if (lowerText.includes('policy') || lowerText.includes('regulation') || lowerText.includes('law')) return 'Policy Change';
+    if (lowerText.includes('member') || lowerText.includes('join')) return 'Membership';
     return 'General';
   };
 
   const determineMarketCategory = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('expansion') || lowerText.includes('project')) return 'Expansion';
-    if (lowerText.includes('production') || lowerText.includes('output')) return 'Production';
-    if (lowerText.includes('environment') || lowerText.includes('renewable')) return 'Sustainability';
+    if (lowerText.includes('expansion') || lowerText.includes('project') || lowerText.includes('investment') || lowerText.includes('billion')) return 'Expansion';
+    if (lowerText.includes('production') || lowerText.includes('output') || lowerText.includes('shipment') || lowerText.includes('record')) return 'Production';
+    if (lowerText.includes('environment') || lowerText.includes('renewable') || lowerText.includes('sustainability') || lowerText.includes('carbon')) return 'Sustainability';
+    if (lowerText.includes('approval') || lowerText.includes('regulation') || lowerText.includes('government') || lowerText.includes('permit')) return 'Regulatory';
+    if (lowerText.includes('contract') || lowerText.includes('deal') || lowerText.includes('agreement') || lowerText.includes('supply')) return 'Commercial';
     return 'General';
   };
 
   const determineUrgency = (text) => {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('strike') || lowerText.includes('urgent')) return 'high';
-    if (lowerText.includes('negotiat') || lowerText.includes('expansion')) return 'medium';
+    if (lowerText.includes('strike') || lowerText.includes('urgent') || lowerText.includes('crisis') || lowerText.includes('emergency') || lowerText.includes('billion')) return 'high';
+    if (lowerText.includes('negotiat') || lowerText.includes('dispute') || lowerText.includes('concern') || lowerText.includes('expansion') || lowerText.includes('record')) return 'medium';
     return 'low';
   };
 
@@ -230,6 +242,7 @@ const fetchRealData = async () => {
     if (diffHours < 1) return 'Less than 1 hour ago';
     if (diffHours < 24) return `${diffHours} hours ago`;
     const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
   };
 
@@ -248,7 +261,7 @@ const fetchRealData = async () => {
       category: 'General',
       urgency: 'low',
       title: 'No live union news available',
-      summary: 'Unable to fetch live union news at this time.',
+      summary: 'Unable to fetch live union news at this time. This may be due to API limitations or no recent relevant news.',
       timestamp: '1 hour ago',
       source: 'System',
       location: 'WA',
@@ -261,7 +274,7 @@ const fetchRealData = async () => {
       id: 'mock_market_1',
       company: 'System Message',
       title: 'No live market news available',
-      summary: 'Unable to fetch live market news at this time.',
+      summary: 'Unable to fetch live market news at this time. This may be due to API limitations or no recent relevant news.',
       timestamp: '1 hour ago',
       source: 'System',
       category: 'General',
@@ -450,7 +463,7 @@ const fetchRealData = async () => {
           </div>
         </div>
 
-  {/* Filters */}
+        {/* Filters - All on one line */}
         <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
           <div className="flex flex-wrap gap-4">
             <div>
@@ -534,6 +547,9 @@ const fetchRealData = async () => {
                       src={item.thumbnail} 
                       alt={item.title}
                       className="w-24 h-16 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop';
+                      }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
@@ -549,70 +565,79 @@ const fetchRealData = async () => {
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
                       <p className="text-gray-700 mb-3">{item.summary}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span className="flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {item.timestamp}
-                          </span>
-                          <span>Source: {item.source}</span>
-                        </div>
-                        <button 
-                          onClick={() => item.url && window.open(item.url, '_blank')}
-                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span>Read Full Article</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                     <div className="flex items-center justify-between">
+                       <div className="flex items-center space-x-4 text-sm text-gray-500">
+                         <span className="flex items-center">
+                           <Clock className="w-4 h-4 mr-1" />
+                           {item.timestamp}
+                         </span>
+                         <span>Source: {item.source}</span>
+                       </div>
+                       <button 
+                         onClick={() => item.url && window.open(item.url, '_blank')}
+                         className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm"
+                       >
+                         <ExternalLink className="w-4 h-4" />
+                         <span>Read Full Article</span>
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             ))}
 
-          {/* Market Watch Feed */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Market Watch - WA Iron Ore Miners
-              {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({marketNewsData.length})</span>}
-            </h2>
-            
- 
+             {filteredData.length === 0 && (
+               <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                 <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                 <h3 className="text-lg font-medium text-gray-900 mb-2">No union updates found</h3>
+                 <p className="text-gray-600">No union activity matches your current filters. Try adjusting your search criteria.</p>
+               </div>
+             )}
+           </div>
+         </div>
 
-            <div className="space-y-4">
-              {filteredMarketNews.map(item => (
-                <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
-                  <div className="flex items-start space-x-3">
-                    <img 
-                      src={item.thumbnail} 
-                      alt={item.title}
-                      className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="text-sm font-medium text-blue-600">{item.company}</span>
-                        <span className="text-gray-400">•</span>
-                        <span className="text-sm text-gray-500">{item.category}</span>
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
-                      <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {item.timestamp}
-                          </span>
-                          <span>Source: {item.source}</span>
-                        </div>
-                        <button 
-                          onClick={() => item.url && window.open(item.url, '_blank')}
-                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Read More</span>
-                        </button>
+         {/* Market Watch Feed */}
+         <div>
+           <h2 className="text-lg font-semibold text-gray-900 mb-4">
+             Market Watch - WA Iron Ore Miners
+             {marketNewsData.length > 0 && <span className="text-sm text-green-600 ml-2">● Live ({marketNewsData.length})</span>}
+           </h2>
+
+           <div className="space-y-4">
+             {filteredMarketNews.map(item => (
+               <div key={item.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[item.urgency]} p-4`}>
+                 <div className="flex items-start space-x-3">
+                   <img 
+                     src={item.thumbnail} 
+                     alt={item.title}
+                     className="w-20 h-14 object-cover rounded-lg flex-shrink-0"
+                     onError={(e) => {
+                       e.target.src = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop';
+                     }}
+                   />
+                   <div className="flex-1">
+                     <div className="flex items-center space-x-2 mb-2">
+                       <span className="text-sm font-medium text-blue-600">{item.company}</span>
+                       <span className="text-gray-400">•</span>
+                       <span className="text-sm text-gray-500">{item.category}</span>
+                     </div>
+                     <h3 className="text-base font-semibold text-gray-900 mb-2">{item.title}</h3>
+                     <p className="text-gray-700 text-sm mb-3">{item.summary}</p>
+                     <div className="flex items-center justify-between">
+                       <div className="flex items-center space-x-3 text-xs text-gray-500">
+                         <span className="flex items-center">
+                           <Clock className="w-3 h-3 mr-1" />
+                           {item.timestamp}
+                         </span>
+                         <span>Source: {item.source}</span>
+                       </div>
+                       <button 
+                         onClick={() => item.url && window.open(item.url, '_blank')}
+                         className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-xs"
+                       >
+                         <ExternalLink className="w-3 h-3" />
+                         <span>Read More</span>
+                       </button>
                      </div>
                    </div>
                  </div>
