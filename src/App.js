@@ -495,6 +495,9 @@ const fetchMarketNews = async () => {
           </div>
         </div>
 
+<SocialMediaMonitor />
+
+
         {/* Summary Cards */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="grid grid-cols-4 gap-4">
