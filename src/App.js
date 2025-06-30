@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, TrendingUp, AlertCircle, Users, MapPin, Clock, ExternalLink, RotateCcw } from 'lucide-react';
+import UnionPosts from './components/UnionPosts';
 
 // Add new tab/section for Social Media Monitor
 
@@ -494,7 +495,7 @@ const fetchMarketNews = async () => {
           </div>
         </div>
 
-
+<UnionPosts />
 
 
         {/* Summary Cards */}
