@@ -1,6 +1,6 @@
 // components/UnionPosts.js - React component to display union posts
 import React, { useState, useEffect } from 'react';
-import { getRecentUnionPosts } from '../lib/sanity';
+import { getRecentUnionPosts } from '../../lib/sanity';
 import { Calendar, ExternalLink, Tag, AlertTriangle } from 'lucide-react';
 
 const UnionPosts = () => {
