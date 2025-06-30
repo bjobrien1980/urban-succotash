@@ -495,7 +495,7 @@ const fetchMarketNews = async () => {
           </div>
         </div>
 
-<SocialMediaMonitor />
+// <SocialMediaMonitor />
 
 
         {/* Summary Cards */}
