@@ -20,14 +20,28 @@ const SocialMediaMonitor = () => {
     ]
   };
 
-  // Your API fetching functions use these keywords
-  const fetchTwitterData = async (company) => {
-    const keywords = SEARCH_KEYWORDS.companies[company];
-    const query = `(${keywords.join(' OR ')}) AND (mining OR Pilbara OR FIFO)`;
-    // ... rest of Twitter API call
-  };
-
-  // ... rest of your component
+const fetchTwitterData = async (company) => {
+  const keywords = SEARCH_KEYWORDS.companies[company];
+  const query = `(${keywords.join(' OR ')}) AND (mining OR Pilbara OR FIFO)`;
+  
+  try {
+    const response = await fetch(`https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=5`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.REACT_APP_TWITTER_BEARER_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Twitter API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Twitter fetch error:', error);
+    return [];
+  }
 };
 
   useEffect(() => {
