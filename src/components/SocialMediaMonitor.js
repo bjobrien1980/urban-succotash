@@ -1,16 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, RefreshCw, ExternalLink, Users } from 'lucide-react';
 
-const CleanSocialMonitor = () => {
+const SocialMediaMonitor = () => {
   const [socialData, setSocialData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
 
+  // 👈 KEYWORDS CONFIGURATION GOES HERE
+  const SEARCH_KEYWORDS = {
+    companies: {
+      'BHP': ['BHP', 'BHP Billiton', 'BHP Group'],
+      'Rio Tinto': ['Rio Tinto', 'RioTinto', 'Rio'],
+      'Fortescue': ['Fortescue', 'FMG', 'Fortescue Metals'],
+      'Hancock Iron Ore': ['Hancock', 'Roy Hill', 'Hancock Prospecting'],
+      'Mineral Resources': ['MinRes', 'Mineral Resources', 'MRL']
+    },
+    issues: [
+      'mining jobs', 'FIFO', 'roster', 'shift work', 'mining safety',
+      'union', 'strike', 'wage', 'Pilbara', 'iron ore', 'mining worker'
+    ]
+  };
 
-const fetchRealData = async () => {
-  // Use the Twitter API integration code from earlier
-  // Search for: BHP, "Rio Tinto", Fortescue, "Hancock Iron Ore", "Mineral Resources"
-  // Your Twitter Bearer Token: AAAAAAAAAAAAAAAAAAAAAONY2wEAAAAADmXJGNjtDVNPVaUIChoztX5lL9A%3DeLUH5KUan1wAvVDskQqn3SHBCwkdrLh4zI3irPK0NKCeFO1fZt
+  // Your API fetching functions use these keywords
+  const fetchTwitterData = async (company) => {
+    const keywords = SEARCH_KEYWORDS.companies[company];
+    const query = `(${keywords.join(' OR ')}) AND (mining OR Pilbara OR FIFO)`;
+    // ... rest of Twitter API call
+  };
+
+  // ... rest of your component
 };
 
   useEffect(() => {
