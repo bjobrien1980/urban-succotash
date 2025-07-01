@@ -631,7 +631,9 @@ const UnionMonitorDashboard = () => {
 
   const filteredData = currentUnionData.filter(item => {
     if (selectedUnion !== 'all' && item.union !== selectedUnion) return false;
-  };
+    if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+    return true;
+  });
 
       import React, { useState, useEffect } from 'react';
 import { Search, Bell, TrendingUp, AlertCircle, Users, MapPin, Clock, ExternalLink, RotateCcw } from 'lucide-react';
