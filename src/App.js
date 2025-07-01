@@ -495,7 +495,7 @@ const fetchMarketNews = async () => {
           </div>
         </div>
 
-<FacebookPostsProcessor />
+<UnionPosts />
 
 
         {/* Summary Cards */}
