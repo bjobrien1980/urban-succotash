@@ -35,13 +35,15 @@ const UnionMonitorDashboard = () => {
   // Cache configuration
   const CACHE_DURATION = 120 * 60 * 1000; // 120 minutes in milliseconds
 
-  // Cache helper functions
+  // Cache helper functions - Replace localStorage with in-memory storage for artifacts
+  const cache = {};
+  
   const getCachedData = (key) => {
     try {
-      const cached = localStorage.getItem(key);
+      const cached = cache[key];
       if (!cached) return null;
       
-      const { data, timestamp } = JSON.parse(cached);
+      const { data, timestamp } = cached;
       const now = Date.now();
       
       if (now - timestamp < CACHE_DURATION) {
@@ -49,7 +51,7 @@ const UnionMonitorDashboard = () => {
         return data;
       } else {
         console.log(`Cache expired for ${key} (${Math.round((now - timestamp) / 60000)} minutes old)`);
-        localStorage.removeItem(key);
+        delete cache[key];
         return null;
       }
     } catch (error) {
@@ -64,7 +66,7 @@ const UnionMonitorDashboard = () => {
         data: data,
         timestamp: Date.now()
       };
-      localStorage.setItem(key, JSON.stringify(cacheEntry));
+      cache[key] = cacheEntry;
       console.log(`Cached ${key} for 120 minutes`);
     } catch (error) {
       console.error(`Error setting cache for ${key}:`, error);
@@ -625,7 +627,7 @@ const UnionMonitorDashboard = () => {
     low: <Users className="w-4 h-4 text-green-500" />
   };
 
-  // Data filtering
+// Data filtering
   const currentUnionData = unionNews.length > 0 ? unionNews : mockUnionData;
   const currentMarketData = marketNewsData.length > 0 ? marketNewsData : mockMarketData;
 
@@ -635,7 +637,29 @@ const UnionMonitorDashboard = () => {
     return true;
   });
 
-      import React, { useState, useEffect } from 'react';
+  const filteredMarketNews = currentMarketData.filter(item => {
+    if (selectedCompany !== 'all' && item.company !== selectedCompany) return false;
+    if (selectedMarketCategory !== 'all' && item.category !== selectedMarketCategory) return false;
+    return true;
+  });
+
+  // Refresh function
+  const simulateSearch = async () => {
+    setIsSearching(true);
+    await Promise.all([fetchRealData(), fetchUnionNews(), fetchMarketNews()]);
+    setLastUpdated(new Date());
+    setIsSearching(false);
+  };
+
+  // Statistics
+  const todayStats = {
+    total: currentUnionData.length,
+    high: currentUnionData.filter(item => item.urgency === 'high').length,
+    medium: currentUnionData.filter(item => item.urgency === 'medium').length,
+    low: currentUnionData.filter(item => item.urgency === 'low').length
+  };
+
+import React, { useState, useEffect } from 'react';
 import { Search, Bell, TrendingUp, AlertCircle, Users, MapPin, Clock, ExternalLink, RotateCcw } from 'lucide-react';
 import UnionPosts from './components/UnionPosts';
 
@@ -672,13 +696,15 @@ const UnionMonitorDashboard = () => {
   // Cache configuration
   const CACHE_DURATION = 120 * 60 * 1000; // 120 minutes in milliseconds
 
-  // Cache helper functions
+  // Cache helper functions - Replace localStorage with in-memory storage for artifacts
+  const cache = {};
+  
   const getCachedData = (key) => {
     try {
-      const cached = localStorage.getItem(key);
+      const cached = cache[key];
       if (!cached) return null;
       
-      const { data, timestamp } = JSON.parse(cached);
+      const { data, timestamp } = cached;
       const now = Date.now();
       
       if (now - timestamp < CACHE_DURATION) {
@@ -686,7 +712,7 @@ const UnionMonitorDashboard = () => {
         return data;
       } else {
         console.log(`Cache expired for ${key} (${Math.round((now - timestamp) / 60000)} minutes old)`);
-        localStorage.removeItem(key);
+        delete cache[key];
         return null;
       }
     } catch (error) {
@@ -701,7 +727,7 @@ const UnionMonitorDashboard = () => {
         data: data,
         timestamp: Date.now()
       };
-      localStorage.setItem(key, JSON.stringify(cacheEntry));
+      cache[key] = cacheEntry;
       console.log(`Cached ${key} for 120 minutes`);
     } catch (error) {
       console.error(`Error setting cache for ${key}:`, error);
