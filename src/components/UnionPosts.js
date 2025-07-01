@@ -1,5 +1,5 @@
-// Enhanced UnionPosts Component - src/components/UnionPosts.js
-// Replace your existing UnionPosts component with this enhanced version
+// Fixed UnionPosts Component - src/components/UnionPosts.js
+// This version has better error handling and debugging
 
 import React, { useState, useEffect } from 'react';
 import { Users, ExternalLink, Clock, MapPin, AlertCircle, TrendingUp } from 'lucide-react';
@@ -8,18 +8,31 @@ const UnionPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         setLoading(true);
+        console.log('Fetching Facebook posts...');
+        
         const response = await fetch('/Facebook-posts.txt');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`);
+        }
+        
         const text = await response.text();
+        console.log('Raw text length:', text.length);
+        console.log('First 500 characters:', text.substring(0, 500));
+        
         const parsedPosts = parsePostsData(text);
+        console.log('Parsed posts:', parsedPosts);
+        
         setPosts(parsedPosts);
+        setDebugInfo(`Loaded ${text.length} characters, found ${parsedPosts.length} posts`);
       } catch (err) {
         console.error('Error fetching Facebook posts:', err);
-        setError('Failed to load union posts');
+        setError(`Failed to load union posts: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -30,54 +43,102 @@ const UnionPosts = () => {
 
   const parsePostsData = (text) => {
     const posts = [];
-    const sections = text.split('\n\n').filter(section => section.trim());
     
-    sections.forEach((section, index) => {
-      try {
-        const lines = section.trim().split('\n');
-        let union = '';
-        let date = '';
-        let postUrl = '';
-        let content = '';
-        let imageUrl = '';
-        
-        // Parse each line
-        lines.forEach(line => {
-          if (line.startsWith('<union>') && line.endsWith('</union>')) {
-            union = line.replace('<union>', '').replace('</union>', '');
-          } else if (line.startsWith('<date>') && line.endsWith('</date>')) {
-            date = line.replace('<date>', '').replace('</date>', '');
-          } else if (line.startsWith('https://www.facebook.com/share/')) {
-            postUrl = line.trim();
-          } else if (line.startsWith('https://www.facebook.com/photo/')) {
-            imageUrl = line.trim();
-          } else if (line.trim() && !line.startsWith('https://') && !line.includes('<')) {
-            content += line + ' ';
+    try {
+      // Split by double newlines or union tags to separate posts
+      const sections = text.split(/(?=<union>)/).filter(section => section.trim());
+      console.log('Found sections:', sections.length);
+      
+      sections.forEach((section, index) => {
+        try {
+          console.log(`Processing section ${index}:`, section.substring(0, 100));
+          
+          let union = '';
+          let date = '';
+          let postUrl = '';
+          let content = '';
+          let imageUrl = '';
+          
+          // Extract union name
+          const unionMatch = section.match(/<union>(.*?)<\/union>/);
+          if (unionMatch) {
+            union = unionMatch[1].trim();
           }
-        });
-        
-        // Clean up content
-        content = content.trim();
-        
-        if (union && date && content) {
-          posts.push({
-            id: `post_${index}`,
-            union: union,
-            date: date,
-            content: content,
-            postUrl: postUrl,
-            imageUrl: imageUrl,
-            category: determineCategory(content),
-            urgency: determineUrgency(content),
-            timestamp: formatTimestamp(date)
+          
+          // Extract date
+          const dateMatch = section.match(/<date>(.*?)<\/date>/);
+          if (dateMatch) {
+            date = dateMatch[1].trim();
+          }
+          
+          // Split content by lines
+          const lines = section.split('\n');
+          let contentStarted = false;
+          
+          lines.forEach(line => {
+            const trimmedLine = line.trim();
+            
+            // Skip empty lines and tag lines
+            if (!trimmedLine || trimmedLine.includes('<union>') || trimmedLine.includes('<date>')) {
+              return;
+            }
+            
+            // Check for Facebook share URL
+            if (trimmedLine.startsWith('https://www.facebook.com/share/')) {
+              postUrl = trimmedLine;
+              contentStarted = true;
+              return;
+            }
+            
+            // Check for Facebook photo URL
+            if (trimmedLine.startsWith('https://www.facebook.com/photo/')) {
+              imageUrl = trimmedLine;
+              return;
+            }
+            
+            // If we've started content and this isn't a URL, add to content
+            if (contentStarted && !trimmedLine.startsWith('https://')) {
+              content += trimmedLine + ' ';
+            }
           });
+          
+          // Clean up content
+          content = content.trim();
+          
+          console.log(`Parsed post ${index}:`, { union, date, hasContent: !!content, hasUrl: !!postUrl, hasImage: !!imageUrl });
+          
+          // Only add if we have the basic required fields
+          if (union && date && content) {
+            posts.push({
+              id: `post_${index}`,
+              union: union,
+              date: date,
+              content: content,
+              postUrl: postUrl,
+              imageUrl: imageUrl,
+              category: determineCategory(content),
+              urgency: determineUrgency(content),
+              timestamp: formatTimestamp(date)
+            });
+          } else {
+            console.log(`Skipping post ${index} - missing required fields:`, { 
+              hasUnion: !!union, 
+              hasDate: !!date, 
+              hasContent: !!content 
+            });
+          }
+        } catch (error) {
+          console.error(`Error parsing post section ${index}:`, error);
         }
-      } catch (error) {
-        console.error('Error parsing post section:', error);
-      }
-    });
-    
-    return posts;
+      });
+      
+      console.log(`Successfully parsed ${posts.length} posts`);
+      return posts;
+      
+    } catch (error) {
+      console.error('Error in parsePostsData:', error);
+      return [];
+    }
   };
 
   const determineCategory = (content) => {
@@ -143,7 +204,6 @@ const UnionPosts = () => {
     'General': 'bg-gray-100 text-gray-800'
   };
 
-  // Fallback thumbnail for posts without images
   const getDefaultThumbnail = (unionName) => {
     const unionImages = {
       'Maritime Union of Australia': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
@@ -152,7 +212,6 @@ const UnionPosts = () => {
       'Construction Forestry Mining Energy Union': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
     };
     
-    // Find matching union image or use default
     for (const [key, image] of Object.entries(unionImages)) {
       if (unionName.toLowerCase().includes(key.toLowerCase().split(' ')[0])) {
         return image;
@@ -182,9 +241,11 @@ const UnionPosts = () => {
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Union Social Media Updates</h2>
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="text-center text-gray-500">
+          <div className="text-center text-red-500">
             <Users className="w-8 h-8 mx-auto mb-2" />
-            <p>{error}</p>
+            <p className="font-medium">Error Loading Posts</p>
+            <p className="text-sm mt-1">{error}</p>
+            <p className="text-xs text-gray-500 mt-2">{debugInfo}</p>
           </div>
         </div>
       </div>
@@ -197,6 +258,13 @@ const UnionPosts = () => {
         Union Social Media Updates
         <span className="text-sm text-green-600 ml-2">● Live ({posts.length})</span>
       </h2>
+      
+      {/* Debug info for troubleshooting */}
+      {posts.length === 0 && debugInfo && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm">
+          <strong>Debug:</strong> {debugInfo}
+        </div>
+      )}
       
       <div className="space-y-4">
         {posts.map(post => (
@@ -230,8 +298,8 @@ const UnionPosts = () => {
                 
                 {/* Post Content */}
                 <div className="mb-3">
-                  <p className="text-gray-700 text-sm leading-relaxed line-clamp-4">
-                    {post.content.length > 200 ? post.content.substring(0, 200) + '...' : post.content}
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    {post.content.length > 300 ? post.content.substring(0, 300) + '...' : post.content}
                   </p>
                 </div>
                 
@@ -247,24 +315,27 @@ const UnionPosts = () => {
                       WA
                     </span>
                   </div>
-                  <button 
-                    onClick={() => post.postUrl && window.open(post.postUrl, '_blank')}
-                    className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm font-medium"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>View on Facebook</span>
-                  </button>
+                  {post.postUrl && (
+                    <button 
+                      onClick={() => window.open(post.postUrl, '_blank')}
+                      className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>View on Facebook</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         ))}
         
-        {posts.length === 0 && (
+        {posts.length === 0 && !error && (
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No union posts found</h3>
-            <p className="text-gray-600">Union social media updates will appear here when available.</p>
+            <p className="text-gray-600">Check the browser console for debugging information.</p>
+            {debugInfo && <p className="text-xs text-gray-500 mt-2">{debugInfo}</p>}
           </div>
         )}
       </div>
