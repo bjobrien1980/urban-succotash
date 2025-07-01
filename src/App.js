@@ -624,7 +624,7 @@ const removeDuplicates = (articles) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-       /* Enhanced Market Overview Section - Replace your existing Market Overview div */
+      
 
 {/* Market Overview */}
 <div className="mb-6">
