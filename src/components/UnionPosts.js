@@ -17,7 +17,7 @@ const UnionPosts = () => {
         setLoading(true);
         console.log('Fetching Facebook posts...');
         
-        const response = await fetch('/Facebook-posts.txt');
+        const response = await fetch('/data/Facebook-posts.txt');
         if (!response.ok) {
           throw new Error(`Failed to fetch: ${response.status}`);
         }
