@@ -194,23 +194,48 @@ const UnionPosts = () => {
 
   const getDefaultThumbnail = (unionName) => {
     const unionImages = {
-      'Maritime Union of Australia': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
-      'Mining and Energy Union': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
-      'Australian Workers Union': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop',
-      'Construction Forestry Mining Energy Union': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
-      'Electrical Trades Union': 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop',
-      'Australian Manufacturing Workers': 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop',
-      'Offshore Alliance': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop'
+      // Maritime unions
+      'maritime': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop&auto=format',
+      'mua': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop&auto=format',
+      
+      // Mining unions
+      'mining': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&auto=format',
+      'meu': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&auto=format',
+      'pilbara': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&auto=format',
+      
+      // Construction unions
+      'construction': 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop&auto=format',
+      'cfmeu': 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop&auto=format',
+      
+      // Electrical unions
+      'electrical': 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop&auto=format',
+      'etu': 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop&auto=format',
+      
+      // Manufacturing unions
+      'manufacturing': 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop&auto=format',
+      'amwu': 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop&auto=format',
+      
+      // Workers unions
+      'workers': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop&auto=format',
+      'awu': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop&auto=format',
+      
+      // Offshore/Oil & Gas
+      'offshore': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop&auto=format',
+      'oil': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop&auto=format',
+      'gas': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop&auto=format'
     };
     
-    // Find matching union image or use default
+    const lowerUnionName = unionName.toLowerCase();
+    
+    // Try to match specific union types
     for (const [key, image] of Object.entries(unionImages)) {
-      if (unionName.toLowerCase().includes(key.toLowerCase().split(' ')[0])) {
+      if (lowerUnionName.includes(key)) {
         return image;
       }
     }
     
-    return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop';
+    // Default fallback
+    return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop&auto=format';
   };
 
   if (loading) {
@@ -258,11 +283,12 @@ const UnionPosts = () => {
               {/* Thumbnail */}
               <div className="flex-shrink-0">
                 <img 
-                  src={post.imageUrl || getDefaultThumbnail(post.union)}
+                  src={getDefaultThumbnail(post.union)}
                   alt={`${post.union} post`}
                   className="w-24 h-16 object-cover rounded-lg border border-gray-200"
                   onError={(e) => {
-                    e.target.src = getDefaultThumbnail(post.union);
+                    // Fallback to a simple colored rectangle if image fails
+                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5VbmlvbiBQb3N0PC90ZXh0Pjwvc3ZnPg==';
                   }}
                 />
               </div>
