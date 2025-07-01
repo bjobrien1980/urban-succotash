@@ -1,6 +1,6 @@
-// components/FacebookPostsProcessor.js - Processes pasted Facebook content
+// components/UnionPosts.js - Improved version with better layout and functionality
 import React, { useState, useEffect } from 'react';
-import { Calendar, ExternalLink, Image, AlertTriangle } from 'lucide-react';
+import { Calendar, ExternalLink, Image, AlertTriangle, Users } from 'lucide-react';
 
 const UnionPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -21,13 +21,15 @@ const UnionPosts = () => {
         const rawText = await response.text();
         const processedPosts = await processRawFacebookText(rawText);
         
-        // Filter for posts from last 7 days
+        // Filter for posts from last 7 days (exact 7 days, not just this week)
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0); // Start of day 7 days ago
         
-        const recentPosts = processedPosts.filter(post => 
-          new Date(post.date) >= sevenDaysAgo
-        );
+        const recentPosts = processedPosts.filter(post => {
+          const postDate = new Date(post.date);
+          return postDate >= sevenDaysAgo;
+        });
         
         setPosts(recentPosts);
       } catch (err) {
@@ -95,9 +97,9 @@ const UnionPosts = () => {
       const facebookUrl = urlMatch ? urlMatch[1] : null;
       
       // Extract images (look for image URLs or image indicators)
-      const imageMatch = chunk.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif))/i) || 
-                         chunk.includes('📷') || chunk.includes('Photo') || chunk.includes('Image');
-      const hasImage = !!imageMatch;
+      const imageMatch = chunk.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif))/i);
+      const hasImageEmoji = chunk.includes('📷') || chunk.includes('🖼️') || chunk.includes('Photo') || chunk.includes('Image');
+      const imageUrl = imageMatch ? imageMatch[1] : null;
       
       // Get the main content (remove metadata and clean up)
       let content = chunk
@@ -106,19 +108,20 @@ const UnionPosts = () => {
         .replace(/\n\s*\n/g, '\n') // Remove extra newlines
         .trim();
       
-      // Generate summary using Claude's completion API
-      const summary = await generateSummary(content, unionName);
+      // Generate detailed summary using Claude's completion API
+      const summary = await generateDetailedSummary(content, unionName);
       
-      if (!summary || summary.length < 10) return null;
+      if (!summary || summary.length < 20) return null;
       
       return {
         id: Date.now() + Math.random(),
         unionName,
         summary,
-        content: content.substring(0, 200) + '...', // Truncated content for reference
+        content: content.length > 300 ? content.substring(0, 300) + '...' : content,
         url: facebookUrl,
         date: date.toISOString(),
-        hasImage,
+        hasImage: hasImageEmoji || !!imageUrl,
+        imageUrl: imageUrl,
         originalText: chunk // Keep original for debugging
       };
       
@@ -158,16 +161,21 @@ const UnionPosts = () => {
     return now;
   };
 
-  // Generate AI summary using Claude completion
-  const generateSummary = async (content, unionName) => {
+  // Generate detailed AI summary using Claude completion
+  const generateDetailedSummary = async (content, unionName) => {
     try {
       const prompt = `
-        Create a single-line summary (maximum 80 characters) of this union Facebook post:
+        Create a detailed 2-3 sentence summary of this union Facebook post:
         
         Union: ${unionName}
         Content: ${content}
         
-        Focus on the key action, issue, or announcement. Be concise and factual.
+        Focus on:
+        - The main issue, action, or announcement
+        - Key details (locations, companies, dates mentioned)
+        - Impact on workers or industry
+        
+        Write in a professional news style. Maximum 200 characters.
         Respond with ONLY the summary text, no quotes or extra formatting.
       `;
       
@@ -178,28 +186,35 @@ const UnionPosts = () => {
       console.error('Error generating summary:', error);
       // Fallback to simple extraction
       const sentences = content.split(/[.!?]/);
-      const firstSentence = sentences[0]?.trim() || content.substring(0, 80);
-      return firstSentence.length > 80 ? firstSentence.substring(0, 77) + '...' : firstSentence;
+      const firstTwoSentences = sentences.slice(0, 2).join('. ').trim();
+      return firstTwoSentences.length > 200 ? firstTwoSentences.substring(0, 197) + '...' : firstTwoSentences;
     }
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-AU', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays}d ago`;
+    }
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Union Posts</h2>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+        <div className="flex items-center mb-6">
+          <Users className="mr-3 text-blue-600" size={24} />
+          <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-16 bg-gray-200 rounded w-full"></div>
         </div>
       </div>
     );
@@ -207,9 +222,12 @@ const UnionPosts = () => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Union Posts</h2>
-        <div className="text-red-600 flex items-center">
+      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+        <div className="flex items-center mb-6">
+          <Users className="mr-3 text-blue-600" size={24} />
+          <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
+        </div>
+        <div className="text-red-600 flex items-center bg-red-50 p-4 rounded-lg">
           <AlertTriangle size={20} className="mr-2" />
           {error}
         </div>
@@ -217,55 +235,126 @@ const UnionPosts = () => {
     );
   }
 
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">Recent Union Posts (Last 7 Days)</h2>
+    <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <div className="flex items-center">
+          <Users className="mr-3 text-blue-600" size={24} />
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
+            <p className="text-sm text-gray-600">
+              Posts from {sevenDaysAgo.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - Today
+            </p>
+          </div>
+        </div>
+        <div className="bg-blue-50 px-4 py-2 rounded-lg">
+          <span className="text-blue-700 font-semibold">{posts.length} Recent Posts</span>
+        </div>
+      </div>
       
       {posts.length === 0 ? (
-        <p className="text-gray-600">No recent union posts found.</p>
+        <div className="text-center py-12">
+          <Users className="mx-auto text-gray-400 mb-4" size={48} />
+          <p className="text-gray-600 text-lg">No union posts found in the last 7 days</p>
+          <p className="text-gray-500 text-sm mt-2">Check back later for updates</p>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-6">
           {posts.map((post) => (
-            <div key={post.id} className="flex items-center justify-between py-3 px-4 hover:bg-gray-50 rounded-lg border-l-4 border-blue-500">
-              <div className="flex items-center space-x-3 flex-1">
-                {post.hasImage && (
-                  <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
-                    <Image size={16} className="text-gray-500" />
+            <div key={post.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+              {/* Post Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users size={20} className="text-blue-600" />
                   </div>
-                )}
-                
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {post.summary}
-                  </p>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span className="text-blue-600 font-medium">{post.unionName}</span>
-                    <span>•</span>
-                    <div className="flex items-center">
-                      <Calendar size={12} className="mr-1" />
+                  <div>
+                    <h3 className="font-semibold text-blue-600">{post.unionName}</h3>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Calendar size={14} className="mr-1" />
                       {formatDate(post.date)}
                     </div>
                   </div>
                 </div>
+                
+                {post.url && (
+                  <a 
+                    href={post.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center text-blue-600 hover:text-blue-800 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                  >
+                    <ExternalLink size={16} className="mr-2" />
+                    View Original
+                  </a>
+                )}
               </div>
-              
-              {post.url && (
-                <a 
-                  href={post.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center text-blue-600 hover:text-blue-800 transition-colors ml-4"
-                >
-                  <ExternalLink size={16} />
-                </a>
-              )}
+
+              {/* Post Content */}
+              <div className="mb-4">
+                <p className="text-gray-800 leading-relaxed mb-3">
+                  {post.summary}
+                </p>
+                
+                {/* Post thumbnail/image indicator */}
+                {post.hasImage && (
+                  <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
+                    {post.imageUrl ? (
+                      <div className="relative">
+                        <img 
+                          src={post.imageUrl} 
+                          alt="Post thumbnail" 
+                          className="w-20 h-20 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className="w-20 h-20 bg-gray-200 rounded-lg items-center justify-center hidden">
+                          <Image size={24} className="text-gray-500" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <Image size={24} className="text-gray-500" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">
+                        📷 This post contains images or media
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Click "View Original" to see full content
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Post Footer */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  Auto-generated summary from Facebook post
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  <span>Last 7 days</span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
       
-      <div className="mt-4 text-xs text-gray-500 text-center">
-        Showing posts from the last 7 days • Auto-updated from pasted Facebook content
+      {/* Footer */}
+      <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+        <p className="text-xs text-gray-500">
+          Updates automatically from manually curated Facebook posts • 
+          Showing posts from the last 7 days only
+        </p>
       </div>
     </div>
   );
