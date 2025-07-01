@@ -853,19 +853,22 @@ const removeDuplicates = (articles) => {
                   <p className="text-xl text-gray-200 mt-2">Latest market information about Western Australia's iron ore industry</p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <div className="text-sm text-gray-200 flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </div>
-                  <button 
-                    onClick={simulateSearch}
-                    disabled={isSearching}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
-                  >
-                    <RotateCcw className={`w-4 h-4 ${isSearching ? 'animate-spin' : ''}`} />
-                    <span>{isSearching ? 'Searching...' : 'Refresh Now'}</span>
-                  </button>
-                </div>
+  <div className="text-sm text-gray-200 flex items-center">
+    <Clock className="w-4 h-4 mr-1" />
+    Last updated: {lastUpdated.toLocaleTimeString()}
+    <span className="ml-2 text-xs opacity-75">
+      (Cache: 120min)
+    </span>
+  </div>
+  <button 
+    onClick={simulateSearch}
+    disabled={isSearching}
+    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+  >
+    <RotateCcw className={`w-4 h-4 ${isSearching ? 'animate-spin' : ''}`} />
+    <span>{isSearching ? 'Searching...' : 'Refresh Now'}</span>
+  </button>
+</div>
               </div>
             </div>
           </div>
