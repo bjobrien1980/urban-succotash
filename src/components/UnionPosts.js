@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ExternalLink, Image, AlertTriangle } from 'lucide-react';
 
-const FacebookPostsProcessor = () => {
+const UnionPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -271,4 +271,4 @@ const FacebookPostsProcessor = () => {
   );
 };
 
-export default FacebookPostsProcessor;
+export default UnionPosts;
