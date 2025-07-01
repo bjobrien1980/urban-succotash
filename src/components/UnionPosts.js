@@ -1,6 +1,8 @@
-// components/UnionPosts.js - Updated with tag-based processing
+// Enhanced UnionPosts Component - src/components/UnionPosts.js
+// Replace your existing UnionPosts component with this enhanced version
+
 import React, { useState, useEffect } from 'react';
-import { Calendar, ExternalLink, Image, AlertTriangle, Users } from 'lucide-react';
+import { Users, ExternalLink, Clock, MapPin, AlertCircle, TrendingUp } from 'lucide-react';
 
 const UnionPosts = () => {
   const [posts, setPosts] = useState([]);
@@ -8,243 +10,168 @@ const UnionPosts = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function processFacebookDocument() {
+    const fetchPosts = async () => {
       try {
         setLoading(true);
-        
-        // Fetch the raw Facebook posts document
-        const response = await fetch('/data/facebook-posts.txt');
-        if (!response.ok) {
-          throw new Error('Failed to fetch Facebook posts document');
-        }
-        
-        const rawText = await response.text();
-        const processedPosts = await processTaggedFacebookText(rawText);
-        
-        // Filter for posts from last 7 days (exact 7 days, not just this week)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0); // Start of day 7 days ago
-        
-        const recentPosts = processedPosts.filter(post => {
-          const postDate = new Date(post.date);
-          return postDate >= sevenDaysAgo;
-        });
-        
-        setPosts(recentPosts);
+        const response = await fetch('/Facebook-posts.txt');
+        const text = await response.text();
+        const parsedPosts = parsePostsData(text);
+        setPosts(parsedPosts);
       } catch (err) {
-        setError('Failed to process Facebook posts');
-        console.error('Error processing Facebook posts:', err);
+        console.error('Error fetching Facebook posts:', err);
+        setError('Failed to load union posts');
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    processFacebookDocument();
+    fetchPosts();
   }, []);
 
-  // Function to process tagged Facebook text
-  const processTaggedFacebookText = async (rawText) => {
+  const parsePostsData = (text) => {
     const posts = [];
+    const sections = text.split('\n\n').filter(section => section.trim());
     
-    // Split by posts - look for <union> tags or fallback to previous method
-    const chunks = rawText.split(/(?=<union>|(?:\n[A-Z][a-zA-Z\s]+ · \d+[hmd]))/);
-    
-    for (let chunk of chunks) {
-      if (chunk.trim().length < 50) continue; // Skip very short chunks
-      
-      const post = await extractTaggedPostData(chunk.trim());
-      if (post) {
-        posts.push(post);
-      }
-    }
-    
-    return posts.sort((a, b) => new Date(b.date) - new Date(a.date));
-  };
-
-  // Extract post data using tags or fallback methods
-  const extractTaggedPostData = async (chunk) => {
-    try {
-      let unionName = 'Unknown Union';
-      let customDate = null;
-      let relativeTime = null;
-      
-      // Extract union from <union> tag
-      const unionMatch = chunk.match(/<union>(.*?)<\/union>/i);
-      if (unionMatch) {
-        unionName = unionMatch[1].trim();
-        // Remove the tag from the chunk for cleaner processing
-        chunk = chunk.replace(/<union>.*?<\/union>/i, '').trim();
-      } else {
-        // Fallback to pattern matching for union names
-        const unionPatterns = [
-          /CFMEU Mining & Energy WA/i,
-          /CFMEU[^·\n]*/i,
-          /Australian Workers Union WA/i,
-          /Australian Workers Union[^·\n]*/i,
-          /Maritime Union of Australia WA/i,
-          /Maritime Union[^·\n]*/i,
-          /Transport Workers Union WA/i,
-          /Transport Workers[^·\n]*/i,
-          /Construction Workers Union WA/i,
-          /Construction Workers[^·\n]*/i,
-          /Electrical Trades Union WA/i,
-          /Electrical Trades[^·\n]*/i,
-          /Plumbers Union WA/i,
-          /Plumbers Union[^·\n]*/i
-        ];
+    sections.forEach((section, index) => {
+      try {
+        const lines = section.trim().split('\n');
+        let union = '';
+        let date = '';
+        let postUrl = '';
+        let content = '';
+        let imageUrl = '';
         
-        for (let pattern of unionPatterns) {
-          const match = chunk.match(pattern);
-          if (match) {
-            unionName = match[0].trim();
-            break;
+        // Parse each line
+        lines.forEach(line => {
+          if (line.startsWith('<union>') && line.endsWith('</union>')) {
+            union = line.replace('<union>', '').replace('</union>', '');
+          } else if (line.startsWith('<date>') && line.endsWith('</date>')) {
+            date = line.replace('<date>', '').replace('</date>', '');
+          } else if (line.startsWith('https://www.facebook.com/share/')) {
+            postUrl = line.trim();
+          } else if (line.startsWith('https://www.facebook.com/photo/')) {
+            imageUrl = line.trim();
+          } else if (line.trim() && !line.startsWith('https://') && !line.includes('<')) {
+            content += line + ' ';
           }
+        });
+        
+        // Clean up content
+        content = content.trim();
+        
+        if (union && date && content) {
+          posts.push({
+            id: `post_${index}`,
+            union: union,
+            date: date,
+            content: content,
+            postUrl: postUrl,
+            imageUrl: imageUrl,
+            category: determineCategory(content),
+            urgency: determineUrgency(content),
+            timestamp: formatTimestamp(date)
+          });
         }
+      } catch (error) {
+        console.error('Error parsing post section:', error);
       }
-      
-      // Extract date from <date> tag
-      const dateMatch = chunk.match(/<date>(.*?)<\/date>/i);
-      if (dateMatch) {
-        customDate = new Date(dateMatch[1].trim());
-        // Remove the tag from the chunk
-        chunk = chunk.replace(/<date>.*?<\/date>/i, '').trim();
-      } else {
-        // Fallback to relative time extraction
-        const timeMatch = chunk.match(/(\d+[hmdw])\s/);
-        relativeTime = timeMatch ? timeMatch[1] : null;
-      }
-      
-      // Convert relative time to actual date if no custom date provided
-      const date = customDate || convertRelativeTimeToDate(relativeTime);
-      
-      // Extract Facebook URL
-      const urlMatch = chunk.match(/(https?:\/\/(?:www\.)?facebook\.com\/[^\s]+)/);
-      const facebookUrl = urlMatch ? urlMatch[1] : null;
-      
-      // Extract images
-      const imageMatch = chunk.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif))/i);
-      const hasImageEmoji = chunk.includes('📷') || chunk.includes('🖼️') || chunk.includes('Photo') || chunk.includes('Image');
-      const imageUrl = imageMatch ? imageMatch[1] : null;
-      
-      // Get the main content (remove metadata and clean up)
-      let content = chunk
-        .replace(/^[^·]*·[^·]*·/, '') // Remove Facebook header metadata
-        .replace(/(https?:\/\/[^\s]+)/g, '') // Remove URLs
-        .replace(/\n\s*\n/g, '\n') // Remove extra newlines
-        .replace(/<\/?[^>]+(>|$)/g, '') // Remove any remaining tags
-        .trim();
-      
-      // Skip if content is too short after cleaning
-      if (content.length < 30) return null;
-      
-      // Generate detailed summary using Claude's completion API
-      const summary = await generateDetailedSummary(content, unionName);
-      
-      if (!summary || summary.length < 20) return null;
-      
-      return {
-        id: Date.now() + Math.random(),
-        unionName,
-        summary,
-        content: content.length > 300 ? content.substring(0, 300) + '...' : content,
-        url: facebookUrl,
-        date: date.toISOString(),
-        hasImage: hasImageEmoji || !!imageUrl,
-        imageUrl: imageUrl,
-        originalText: chunk // Keep original for debugging
-      };
-      
-    } catch (error) {
-      console.error('Error extracting post data:', error);
-      return null;
-    }
+    });
+    
+    return posts;
   };
 
-  // Convert relative time (3h, 2d) to actual date
-  const convertRelativeTimeToDate = (relativeTime) => {
-    const now = new Date();
-    
-    if (!relativeTime) return now;
-    
-    const value = parseInt(relativeTime);
-    const unit = relativeTime.slice(-1);
-    
-    switch (unit) {
-      case 'h':
-        now.setHours(now.getHours() - value);
-        break;
-      case 'd':
-        now.setDate(now.getDate() - value);
-        break;
-      case 'w':
-        now.setDate(now.getDate() - (value * 7));
-        break;
-      case 'm':
-        now.setMinutes(now.getMinutes() - value);
-        break;
-      default:
-        // If no clear time indicator, assume it's from today
-        break;
-    }
-    
-    return now;
+  const determineCategory = (content) => {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('strike') || lowerContent.includes('industrial action')) return 'Strike Action';
+    if (lowerContent.includes('safety') || lowerContent.includes('accident') || lowerContent.includes('incident')) return 'Safety';
+    if (lowerContent.includes('pay') || lowerContent.includes('wage') || lowerContent.includes('agreement')) return 'Pay & Conditions';
+    if (lowerContent.includes('gender') || lowerContent.includes('equity') || lowerContent.includes('discrimination')) return 'Workplace Equity';
+    if (lowerContent.includes('negotiat') || lowerContent.includes('bargain')) return 'Negotiations';
+    return 'General';
   };
 
-  // Generate detailed AI summary using Claude completion
-  const generateDetailedSummary = async (content, unionName) => {
+  const determineUrgency = (content) => {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('strike') || lowerContent.includes('urgent') || lowerContent.includes('crisis')) return 'high';
+    if (lowerContent.includes('concern') || lowerContent.includes('dispute') || lowerContent.includes('issue')) return 'medium';
+    return 'low';
+  };
+
+  const formatTimestamp = (dateStr) => {
     try {
-      const prompt = `
-        Create a detailed 2-3 sentence summary of this union Facebook post:
-        
-        Union: ${unionName}
-        Content: ${content}
-        
-        Focus on:
-        - The main issue, action, or announcement
-        - Key details (locations, companies, dates mentioned)
-        - Impact on workers or industry
-        
-        Write in a professional news style. Maximum 200 characters.
-        Respond with ONLY the summary text, no quotes or extra formatting.
-      `;
+      const postDate = new Date(dateStr);
+      const now = new Date();
+      const diffTime = Math.abs(now - postDate);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
-      const summary = await window.claude.complete(prompt);
-      return summary.trim().replace(/['"]/g, ''); // Remove quotes if any
-      
-    } catch (error) {
-      console.error('Error generating summary:', error);
-      // Fallback to simple extraction
-      const sentences = content.split(/[.!?]/);
-      const firstTwoSentences = sentences.slice(0, 2).join('. ').trim();
-      return firstTwoSentences.length > 200 ? firstTwoSentences.substring(0, 197) + '...' : firstTwoSentences;
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return '1 day ago';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      return `${Math.floor(diffDays / 30)} months ago`;
+    } catch {
+      return dateStr;
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+  const getUnionIcon = (unionName) => {
+    if (unionName.toLowerCase().includes('maritime')) return '⚓';
+    if (unionName.toLowerCase().includes('mining')) return '⛏️';
+    if (unionName.toLowerCase().includes('transport')) return '🚛';
+    if (unionName.toLowerCase().includes('construction')) return '🏗️';
+    return '👥';
+  };
+
+  const urgencyColors = {
+    high: 'border-red-500 bg-red-50',
+    medium: 'border-yellow-500 bg-yellow-50', 
+    low: 'border-blue-500 bg-blue-50'
+  };
+
+  const urgencyIcons = {
+    high: <AlertCircle className="w-4 h-4 text-red-500" />,
+    medium: <TrendingUp className="w-4 h-4 text-yellow-500" />,
+    low: <Users className="w-4 h-4 text-blue-500" />
+  };
+
+  const categoryColors = {
+    'Strike Action': 'bg-red-100 text-red-800',
+    'Safety': 'bg-orange-100 text-orange-800',
+    'Pay & Conditions': 'bg-green-100 text-green-800',
+    'Workplace Equity': 'bg-purple-100 text-purple-800',
+    'Negotiations': 'bg-blue-100 text-blue-800',
+    'General': 'bg-gray-100 text-gray-800'
+  };
+
+  // Fallback thumbnail for posts without images
+  const getDefaultThumbnail = (unionName) => {
+    const unionImages = {
+      'Maritime Union of Australia': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
+      'Mining and Energy Union': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
+      'Australian Workers Union': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop',
+      'Construction Forestry Mining Energy Union': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop'
+    };
     
-    if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays}d ago`;
+    // Find matching union image or use default
+    for (const [key, image] of Object.entries(unionImages)) {
+      if (unionName.toLowerCase().includes(key.toLowerCase().split(' ')[0])) {
+        return image;
+      }
     }
+    
+    return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&h=200&fit=crop';
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-        <div className="flex items-center mb-6">
-          <Users className="mr-3 text-blue-600" size={24} />
-          <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
-        </div>
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          <div className="h-16 bg-gray-200 rounded w-full"></div>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Union Social Media Updates</h2>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+          </div>
         </div>
       </div>
     );
@@ -252,139 +179,94 @@ const UnionPosts = () => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-        <div className="flex items-center mb-6">
-          <Users className="mr-3 text-blue-600" size={24} />
-          <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
-        </div>
-        <div className="text-red-600 flex items-center bg-red-50 p-4 rounded-lg">
-          <AlertTriangle size={20} className="mr-2" />
-          {error}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Union Social Media Updates</h2>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="text-center text-gray-500">
+            <Users className="w-8 h-8 mx-auto mb-2" />
+            <p>{error}</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-      {/* Header Section */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-        <div className="flex items-center">
-          <Users className="mr-3 text-blue-600" size={24} />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Union Activity Feed</h2>
-            <p className="text-sm text-gray-600">
-              Posts from {sevenDaysAgo.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - Today
-            </p>
-          </div>
-        </div>
-        <div className="bg-blue-50 px-4 py-2 rounded-lg">
-          <span className="text-blue-700 font-semibold">{posts.length} Recent Posts</span>
-        </div>
-      </div>
+    <div className="mb-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        Union Social Media Updates
+        <span className="text-sm text-green-600 ml-2">● Live ({posts.length})</span>
+      </h2>
       
-      {posts.length === 0 ? (
-        <div className="text-center py-12">
-          <Users className="mx-auto text-gray-400 mb-4" size={48} />
-          <p className="text-gray-600 text-lg">No union posts found in the last 7 days</p>
-          <p className="text-gray-500 text-sm mt-2">Check back later for updates</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {posts.map((post) => (
-            <div key={post.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-              {/* Post Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users size={20} className="text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-blue-600">{post.unionName}</h3>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Calendar size={14} className="mr-1" />
-                      {formatDate(post.date)}
-                    </div>
-                  </div>
+      <div className="space-y-4">
+        {posts.map(post => (
+          <div key={post.id} className={`bg-white rounded-lg shadow-sm border-l-4 ${urgencyColors[post.urgency]} p-6`}>
+            <div className="flex items-start space-x-4">
+              
+              {/* Thumbnail */}
+              <div className="flex-shrink-0">
+                <img 
+                  src={post.imageUrl || getDefaultThumbnail(post.union)}
+                  alt={`${post.union} post`}
+                  className="w-24 h-16 object-cover rounded-lg border border-gray-200"
+                  onError={(e) => {
+                    e.target.src = getDefaultThumbnail(post.union);
+                  }}
+                />
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1">
+                {/* Header */}
+                <div className="flex items-center space-x-2 mb-2">
+                  {urgencyIcons[post.urgency]}
+                  <span className="text-lg mr-1">{getUnionIcon(post.union)}</span>
+                  <span className="text-sm font-semibold text-gray-800">{post.union}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${categoryColors[post.category] || categoryColors['General']}`}>
+                    {post.category}
+                  </span>
                 </div>
                 
-                {post.url && (
-                  <a 
-                    href={post.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:text-blue-800 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                {/* Post Content */}
+                <div className="mb-3">
+                  <p className="text-gray-700 text-sm leading-relaxed line-clamp-4">
+                    {post.content.length > 200 ? post.content.substring(0, 200) + '...' : post.content}
+                  </p>
+                </div>
+                
+                {/* Footer */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {post.timestamp}
+                    </span>
+                    <span className="flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      WA
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => post.postUrl && window.open(post.postUrl, '_blank')}
+                    className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm font-medium"
                   >
-                    <ExternalLink size={16} className="mr-2" />
-                    View Original
-                  </a>
-                )}
-              </div>
-
-              {/* Post Content */}
-              <div className="mb-4">
-                <p className="text-gray-800 leading-relaxed mb-3">
-                  {post.summary}
-                </p>
-                
-                {/* Post thumbnail/image indicator */}
-                {post.hasImage && (
-                  <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
-                    {post.imageUrl ? (
-                      <div className="relative">
-                        <img 
-                          src={post.imageUrl} 
-                          alt="Post thumbnail" 
-                          className="w-20 h-20 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                        <div className="w-20 h-20 bg-gray-200 rounded-lg items-center justify-center hidden">
-                          <Image size={24} className="text-gray-500" />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <Image size={24} className="text-gray-500" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">
-                        📷 This post contains images or media
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Click "View Original" to see full content
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Post Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
-                  Auto-generated summary from Facebook post
-                </div>
-                <div className="flex items-center space-x-2 text-xs text-gray-500">
-                  <span>Last 7 days</span>
+                    <ExternalLink className="w-4 h-4" />
+                    <span>View on Facebook</span>
+                  </button>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-      
-      {/* Footer */}
-      <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-        <p className="text-xs text-gray-500">
-          Updates automatically from manually curated Facebook posts • 
-          Showing posts from the last 7 days only
-        </p>
+          </div>
+        ))}
+        
+        {posts.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No union posts found</h3>
+            <p className="text-gray-600">Union social media updates will appear here when available.</p>
+          </div>
+        )}
       </div>
     </div>
   );
