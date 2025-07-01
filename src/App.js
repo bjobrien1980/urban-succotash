@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, TrendingUp, AlertCircle, Users, MapPin, Clock, ExternalLink, RotateCcw } from 'lucide-react';
 import UnionPosts from './components/UnionPosts';
+import { fetchAllEnhancedNews } from './enhancedNews.js';
 
 // Add new tab/section for Social Media Monitor
 
@@ -105,15 +106,18 @@ const UnionMonitorDashboard = () => {
   // Function to fetch union news with multiple search strategies
 const fetchUnionNews = async () => {
   try {
-    console.log('Fetching union news...');
+    console.log('Fetching enhanced union news...');
     setNewsLoading(true);
     
-    // Try multiple search strategies
+    // Enhanced search queries - more targeted than your current ones
     const searchQueries = [
-      '(Pilbara OR "Tom Price" OR Newman OR Karratha) AND ("mining union" OR "mine workers" OR "strike" OR "MEU" OR "AWU") AND ("BHP" OR "Rio Tinto" OR "Fortescue")',
-      '"Western Australia" AND ("mining union" OR "industrial action" OR "strike") AND ("BHP" OR "Rio Tinto" OR "Fortescue")',
-      'Pilbara AND (union OR workers OR strike OR industrial)',
-      '"mining workers" AND "Western Australia"'
+      // More specific union targeting
+      '("CFMEU" OR "Construction Forestry Mining Energy Union") AND ("Western Australia" OR Pilbara) AND (BHP OR "Rio Tinto" OR Fortescue)',
+      '("industrial action" OR "work stoppage" OR "safety dispute") AND ("iron ore" OR mining) AND Australia',
+      '("enterprise agreement" OR "workplace agreement" OR "pay negotiations") AND mining AND ("Western Australia" OR Pilbara)',
+      // Keep some of your working queries but improved
+      'Pilbara AND (union OR workers OR strike OR industrial) AND (BHP OR "Rio Tinto" OR Fortescue)',
+      '"mining workers" AND "Western Australia" AND (safety OR agreement OR dispute)'
     ];
     
     let allArticles = [];
@@ -121,9 +125,9 @@ const fetchUnionNews = async () => {
     for (const query of searchQueries) {
       try {
         const encodedQuery = encodeURIComponent(query);
-        const url = `https://newsapi.org/v2/everything?q=${encodedQuery}&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+        const url = `https://newsapi.org/v2/everything?q=${encodedQuery}&language=en&sortBy=relevancy&pageSize=8&from=${getDateDaysAgo(21)}&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
         
-        console.log('Trying union search:', query);
+        console.log('Trying enhanced union search:', query);
         
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
@@ -131,28 +135,36 @@ const fetchUnionNews = async () => {
         
         if (proxyData.contents) {
           const data = JSON.parse(proxyData.contents);
-          console.log(`Union search "${query}" returned:`, data);
+          console.log(`Enhanced union search "${query}" returned:`, data);
           
           if (data.articles && data.articles.length > 0) {
-            allArticles = allArticles.concat(data.articles);
-            console.log(`Found ${data.articles.length} articles with query: ${query}`);
+            // Filter for quality before adding
+            const qualityArticles = data.articles.filter(article => isHighQualityUnionArticle(article));
+            allArticles = allArticles.concat(qualityArticles);
+            console.log(`Found ${qualityArticles.length} quality articles with query: ${query}`);
           }
         }
       } catch (error) {
-        console.error(`Error with union query "${query}":`, error);
-        continue; // Try next query
+        console.error(`Error with enhanced union query "${query}":`, error);
+        continue;
       }
+      
+      // Delay between requests
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
     if (allArticles.length > 0) {
-      // Remove duplicates by URL
-      const uniqueArticles = allArticles.filter((article, index, self) => 
-        index === self.findIndex(a => a.url === article.url)
-      );
+      // Remove duplicates by URL and title similarity
+      const uniqueArticles = removeDuplicates(allArticles);
       
-      const processedNews = uniqueArticles
-        .filter(article => article.title && article.description)
-        .slice(0, 15) // Limit to 15 most recent
+      // Sort by relevance score instead of just date
+      const scoredArticles = uniqueArticles.map(article => ({
+        ...article,
+        relevanceScore: calculateUnionRelevance(article)
+      })).sort((a, b) => b.relevanceScore - a.relevanceScore);
+      
+      const processedNews = scoredArticles
+        .slice(0, 12) // Top 12 most relevant instead of just recent
         .map((article, index) => ({
           id: `union_${index}`,
           union: determineUnion(article.title + ' ' + article.description),
@@ -164,31 +176,40 @@ const fetchUnionNews = async () => {
           source: article.source.name,
           location: 'WA',
           thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop',
-          url: article.url
+          url: article.url,
+          enhanced: true, // Flag to show this is enhanced
+          relevanceScore: article.relevanceScore
         }));
       
-      console.log('Final processed union news:', processedNews);
+      console.log('Final enhanced union news:', processedNews);
       setUnionNews(processedNews);
     } else {
-      console.log('No union articles found with any query');
+      console.log('No enhanced union articles found with any query');
     }
   } catch (error) {
-    console.error('Error fetching union news:', error);
+    console.error('Error fetching enhanced union news:', error);
   } finally {
     setNewsLoading(false);
   }
 };
 
+
   // Function to fetch market news with multiple search strategies
 const fetchMarketNews = async () => {
   try {
-    console.log('Fetching market news...');
+    console.log('Fetching enhanced market news...');
     
+    // Enhanced market search queries - more targeted
     const searchQueries = [
-      '("BHP Pilbara" OR "Rio Tinto Pilbara" OR "Fortescue Pilbara") AND ("iron ore" OR "mining" OR "expansion")',
-      '"Western Australia" AND ("BHP" OR "Rio Tinto" OR "Fortescue") AND ("mining" OR "iron ore")',
-      'Pilbara AND ("BHP" OR "Rio Tinto" OR "Fortescue") AND mining',
-      '"iron ore" AND "Western Australia" AND (BHP OR "Rio Tinto" OR Fortescue)'
+      // More specific company and project targeting
+      '("iron ore production" OR "mine expansion" OR "new project") AND ("BHP" OR "Rio Tinto" OR "Fortescue") AND Pilbara',
+      '("iron ore exports" OR "Port Hedland" OR "Dampier") AND ("BHP" OR "Rio Tinto" OR "Fortescue")',
+      '("iron ore price" OR "commodity prices") AND ("China demand" OR "steel production") AND Australia',
+      // Investment and development focus
+      '("mining investment" OR "project approval" OR "billion dollar") AND "Western Australia" AND ("iron ore" OR mining)',
+      // Keep some working queries but enhanced
+      'Pilbara AND ("BHP" OR "Rio Tinto" OR "Fortescue") AND (expansion OR production OR investment)',
+      '"iron ore" AND "Western Australia" AND (BHP OR "Rio Tinto" OR Fortescue) AND (record OR increase OR growth)'
     ];
     
     let allArticles = [];
@@ -196,9 +217,9 @@ const fetchMarketNews = async () => {
     for (const query of searchQueries) {
       try {
         const encodedQuery = encodeURIComponent(query);
-        const url = `https://newsapi.org/v2/everything?q=${encodedQuery}&language=en&sortBy=publishedAt&pageSize=10&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
+        const url = `https://newsapi.org/v2/everything?q=${encodedQuery}&language=en&sortBy=relevancy&pageSize=8&from=${getDateDaysAgo(14)}&apiKey=8c9a0321ff654f6782724d40ad436f1f`;
         
-        console.log('Trying market search:', query);
+        console.log('Trying enhanced market search:', query);
         
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
@@ -206,28 +227,32 @@ const fetchMarketNews = async () => {
         
         if (proxyData.contents) {
           const data = JSON.parse(proxyData.contents);
-          console.log(`Market search "${query}" returned:`, data);
+          console.log(`Enhanced market search "${query}" returned:`, data);
           
           if (data.articles && data.articles.length > 0) {
-            allArticles = allArticles.concat(data.articles);
-            console.log(`Found ${data.articles.length} articles with query: ${query}`);
+            const qualityArticles = data.articles.filter(article => isHighQualityMarketArticle(article));
+            allArticles = allArticles.concat(qualityArticles);
+            console.log(`Found ${qualityArticles.length} quality articles with query: ${query}`);
           }
         }
       } catch (error) {
-        console.error(`Error with market query "${query}":`, error);
-        continue; // Try next query
+        console.error(`Error with enhanced market query "${query}":`, error);
+        continue;
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
     if (allArticles.length > 0) {
-      // Remove duplicates by URL
-      const uniqueArticles = allArticles.filter((article, index, self) => 
-        index === self.findIndex(a => a.url === article.url)
-      );
+      const uniqueArticles = removeDuplicates(allArticles);
       
-      const processedNews = uniqueArticles
-        .filter(article => article.title && article.description)
-        .slice(0, 15) // Limit to 15 most recent
+      const scoredArticles = uniqueArticles.map(article => ({
+        ...article,
+        relevanceScore: calculateMarketRelevance(article)
+      })).sort((a, b) => b.relevanceScore - a.relevanceScore);
+      
+      const processedNews = scoredArticles
+        .slice(0, 15) // Top 15 most relevant
         .map((article, index) => ({
           id: `market_${index}`,
           company: determineCompany(article.title + ' ' + article.description),
@@ -238,17 +263,175 @@ const fetchMarketNews = async () => {
           category: determineMarketCategory(article.title + ' ' + article.description),
           urgency: determineUrgency(article.title + ' ' + article.description),
           thumbnail: article.urlToImage || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop',
-          url: article.url
+          url: article.url,
+          enhanced: true,
+          relevanceScore: article.relevanceScore
         }));
       
-      console.log('Final processed market news:', processedNews);
+      console.log('Final enhanced market news:', processedNews);
       setMarketNewsData(processedNews);
     } else {
-      console.log('No market articles found with any query');
+      console.log('No enhanced market articles found with any query');
     }
   } catch (error) {
-    console.error('Error fetching market news:', error);
+    console.error('Error fetching enhanced market news:', error);
   }
+};
+
+  // Helper function for date calculation
+const getDateDaysAgo = (days) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString().split('T')[0];
+};
+
+// Quality filter for union articles
+const isHighQualityUnionArticle = (article) => {
+  const title = (article.title || '').toLowerCase();
+  const description = (article.description || '').toLowerCase();
+  const content = title + ' ' + description;
+  
+  // Must have basic quality
+  if (!article.title || article.title.length < 10) return false;
+  if (!article.description || article.description.length < 20) return false;
+  
+  // Exclude low-quality sources
+  const domain = article.url ? new URL(article.url).hostname.toLowerCase() : '';
+  const lowQualitySources = ['reddit', 'twitter', 'facebook', 'youtube', 'tiktok'];
+  if (lowQualitySources.some(source => domain.includes(source))) return false;
+  
+  // Exclude irrelevant content
+  const irrelevantTerms = ['recipe', 'sport', 'entertainment', 'celebrity', 'fashion', 'game', 'movie'];
+  if (irrelevantTerms.some(term => content.includes(term))) return false;
+  
+  // Must be union or workplace related
+  const unionTerms = ['union', 'workers', 'strike', 'industrial', 'cfmeu', 'workplace', 'agreement', 'negotiate', 'safety', 'mining'];
+  if (!unionTerms.some(term => content.includes(term))) return false;
+  
+  return true;
+};
+
+// Quality filter for market articles  
+const isHighQualityMarketArticle = (article) => {
+  const title = (article.title || '').toLowerCase();
+  const description = (article.description || '').toLowerCase();
+  const content = title + ' ' + description;
+  
+  if (!article.title || article.title.length < 10) return false;
+  if (!article.description || article.description.length < 20) return false;
+  
+  const domain = article.url ? new URL(article.url).hostname.toLowerCase() : '';
+  const lowQualitySources = ['reddit', 'twitter', 'facebook', 'youtube', 'tiktok'];
+  if (lowQualitySources.some(source => domain.includes(source))) return false;
+  
+  const irrelevantTerms = ['recipe', 'sport', 'entertainment', 'celebrity', 'fashion', 'game', 'movie'];
+  if (irrelevantTerms.some(term => content.includes(term))) return false;
+  
+  // Must be market/business related
+  const marketTerms = ['iron ore', 'mining', 'bhp', 'rio tinto', 'fortescue', 'price', 'production', 'export', 'demand', 'investment', 'billion', 'expansion'];
+  if (!marketTerms.some(term => content.includes(term))) return false;
+  
+  return true;
+};
+
+// Enhanced relevance scoring for union news
+const calculateUnionRelevance = (article) => {
+  let score = 0;
+  const title = (article.title || '').toLowerCase();
+  const description = (article.description || '').toLowerCase();
+  
+  // High value union terms
+  const highValueTerms = ['cfmeu', 'strike', 'industrial action', 'safety dispute', 'bhp', 'rio tinto', 'fortescue', 'pilbara'];
+  const mediumValueTerms = ['union', 'workers', 'agreement', 'negotiate', 'western australia', 'mining'];
+  
+  // Score title mentions (higher weight)
+  highValueTerms.forEach(term => {
+    if (title.includes(term)) score += 20;
+  });
+  
+  mediumValueTerms.forEach(term => {
+    if (title.includes(term)) score += 10;
+  });
+  
+  // Score description mentions
+  highValueTerms.forEach(term => {
+    if (description.includes(term)) score += 8;
+  });
+  
+  mediumValueTerms.forEach(term => {
+    if (description.includes(term)) score += 4;
+  });
+  
+  // Recency bonus
+  const daysSincePublished = (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSincePublished <= 1) score += 15;
+  else if (daysSincePublished <= 3) score += 10;
+  else if (daysSincePublished <= 7) score += 5;
+  
+  // Australian source bonus
+  const domain = article.url ? new URL(article.url).hostname.toLowerCase() : '';
+  if (domain.includes('.au')) score += 25;
+  
+  return score;
+};
+
+// Enhanced relevance scoring for market news
+const calculateMarketRelevance = (article) => {
+  let score = 0;
+  const title = (article.title || '').toLowerCase();
+  const description = (article.description || '').toLowerCase();
+  
+  const highValueTerms = ['bhp', 'rio tinto', 'fortescue', 'iron ore price', 'pilbara', 'expansion', 'production', 'billion', 'record'];
+  const mediumValueTerms = ['mining', 'iron ore', 'western australia', 'export', 'china', 'demand', 'investment'];
+  
+  highValueTerms.forEach(term => {
+    if (title.includes(term)) score += 20;
+  });
+  
+  mediumValueTerms.forEach(term => {
+    if (title.includes(term)) score += 10;
+  });
+  
+  highValueTerms.forEach(term => {
+    if (description.includes(term)) score += 8;
+  });
+  
+  mediumValueTerms.forEach(term => {
+    if (description.includes(term)) score += 4;
+  });
+  
+  const daysSincePublished = (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSincePublished <= 1) score += 15;
+  else if (daysSincePublished <= 3) score += 10;
+  else if (daysSincePublished <= 7) score += 5;
+  
+  const domain = article.url ? new URL(article.url).hostname.toLowerCase() : '';
+  if (domain.includes('.au')) score += 25;
+  
+  return score;
+};
+
+// Remove duplicates by URL and title similarity
+const removeDuplicates = (articles) => {
+  const seen = new Set();
+  const seenTitles = new Set();
+  
+  return articles.filter(article => {
+    // Remove exact URL duplicates
+    if (seen.has(article.url)) return false;
+    seen.add(article.url);
+    
+    // Remove similar titles
+    const normalizedTitle = article.title.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (seenTitles.has(normalizedTitle)) return false;
+    seenTitles.add(normalizedTitle);
+    
+    return true;
+  });
 };
 
   // Helper functions to categorize news
