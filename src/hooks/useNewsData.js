@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
 
+// Cache outside the hook so it persists across re-renders
+const cache = {};
+const CACHE_DURATION = 120 * 60 * 1000; // 120 minutes
+
 export const useNewsData = () => {
   const [unionNews, setUnionNews] = useState([]);
   const [marketNewsData, setMarketNewsData] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-
-  // Cache configuration
-  const CACHE_DURATION = 120 * 60 * 1000; // 120 minutes
-  const cache = {};
 
   // Cache helper functions
   const getCachedData = (key) => {
