@@ -1,4 +1,4 @@
-// components/UnionPosts.js - Improved version with better layout and functionality
+// components/UnionPosts.js - Updated with tag-based processing
 import React, { useState, useEffect } from 'react';
 import { Calendar, ExternalLink, Image, AlertTriangle, Users } from 'lucide-react';
 
@@ -19,7 +19,7 @@ const UnionPosts = () => {
         }
         
         const rawText = await response.text();
-        const processedPosts = await processRawFacebookText(rawText);
+        const processedPosts = await processTaggedFacebookText(rawText);
         
         // Filter for posts from last 7 days (exact 7 days, not just this week)
         const sevenDaysAgo = new Date();
@@ -43,17 +43,17 @@ const UnionPosts = () => {
     processFacebookDocument();
   }, []);
 
-  // Function to process raw Facebook text and extract posts
-  const processRawFacebookText = async (rawText) => {
+  // Function to process tagged Facebook text
+  const processTaggedFacebookText = async (rawText) => {
     const posts = [];
     
-    // Split by common Facebook post separators
-    const chunks = rawText.split(/(?=\n[A-Z][a-zA-Z\s]+ · \d+[hmd]|CFMEU|Australian Workers|Maritime Union|Transport Workers)/);
+    // Split by posts - look for <union> tags or fallback to previous method
+    const chunks = rawText.split(/(?=<union>|(?:\n[A-Z][a-zA-Z\s]+ · \d+[hmd]))/);
     
     for (let chunk of chunks) {
       if (chunk.trim().length < 50) continue; // Skip very short chunks
       
-      const post = await extractPostData(chunk.trim());
+      const post = await extractTaggedPostData(chunk.trim());
       if (post) {
         posts.push(post);
       }
@@ -62,51 +62,81 @@ const UnionPosts = () => {
     return posts.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
-  // Extract individual post data from a chunk
-  const extractPostData = async (chunk) => {
+  // Extract post data using tags or fallback methods
+  const extractTaggedPostData = async (chunk) => {
     try {
-      // Extract union name (look for common union names)
-      const unionPatterns = [
-        /CFMEU[^·\n]*/i,
-        /Australian Workers Union[^·\n]*/i,
-        /Maritime Union[^·\n]*/i,
-        /Transport Workers[^·\n]*/i,
-        /Construction Workers[^·\n]*/i,
-        /Electrical Trades[^·\n]*/i,
-        /Plumbers Union[^·\n]*/i
-      ];
-      
       let unionName = 'Unknown Union';
-      for (let pattern of unionPatterns) {
-        const match = chunk.match(pattern);
-        if (match) {
-          unionName = match[0].trim();
-          break;
+      let customDate = null;
+      let relativeTime = null;
+      
+      // Extract union from <union> tag
+      const unionMatch = chunk.match(/<union>(.*?)<\/union>/i);
+      if (unionMatch) {
+        unionName = unionMatch[1].trim();
+        // Remove the tag from the chunk for cleaner processing
+        chunk = chunk.replace(/<union>.*?<\/union>/i, '').trim();
+      } else {
+        // Fallback to pattern matching for union names
+        const unionPatterns = [
+          /CFMEU Mining & Energy WA/i,
+          /CFMEU[^·\n]*/i,
+          /Australian Workers Union WA/i,
+          /Australian Workers Union[^·\n]*/i,
+          /Maritime Union of Australia WA/i,
+          /Maritime Union[^·\n]*/i,
+          /Transport Workers Union WA/i,
+          /Transport Workers[^·\n]*/i,
+          /Construction Workers Union WA/i,
+          /Construction Workers[^·\n]*/i,
+          /Electrical Trades Union WA/i,
+          /Electrical Trades[^·\n]*/i,
+          /Plumbers Union WA/i,
+          /Plumbers Union[^·\n]*/i
+        ];
+        
+        for (let pattern of unionPatterns) {
+          const match = chunk.match(pattern);
+          if (match) {
+            unionName = match[0].trim();
+            break;
+          }
         }
       }
       
-      // Extract timestamp (look for patterns like "3h", "2d", "1w")
-      const timeMatch = chunk.match(/(\d+[hmdw])\s/);
-      const relativeTime = timeMatch ? timeMatch[1] : null;
+      // Extract date from <date> tag
+      const dateMatch = chunk.match(/<date>(.*?)<\/date>/i);
+      if (dateMatch) {
+        customDate = new Date(dateMatch[1].trim());
+        // Remove the tag from the chunk
+        chunk = chunk.replace(/<date>.*?<\/date>/i, '').trim();
+      } else {
+        // Fallback to relative time extraction
+        const timeMatch = chunk.match(/(\d+[hmdw])\s/);
+        relativeTime = timeMatch ? timeMatch[1] : null;
+      }
       
-      // Convert relative time to actual date
-      const date = convertRelativeTimeToDate(relativeTime);
+      // Convert relative time to actual date if no custom date provided
+      const date = customDate || convertRelativeTimeToDate(relativeTime);
       
-      // Extract Facebook URL (look for facebook.com links)
+      // Extract Facebook URL
       const urlMatch = chunk.match(/(https?:\/\/(?:www\.)?facebook\.com\/[^\s]+)/);
       const facebookUrl = urlMatch ? urlMatch[1] : null;
       
-      // Extract images (look for image URLs or image indicators)
+      // Extract images
       const imageMatch = chunk.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif))/i);
       const hasImageEmoji = chunk.includes('📷') || chunk.includes('🖼️') || chunk.includes('Photo') || chunk.includes('Image');
       const imageUrl = imageMatch ? imageMatch[1] : null;
       
       // Get the main content (remove metadata and clean up)
       let content = chunk
-        .replace(/^[^·]*·[^·]*·/, '') // Remove header metadata
+        .replace(/^[^·]*·[^·]*·/, '') // Remove Facebook header metadata
         .replace(/(https?:\/\/[^\s]+)/g, '') // Remove URLs
         .replace(/\n\s*\n/g, '\n') // Remove extra newlines
+        .replace(/<\/?[^>]+(>|$)/g, '') // Remove any remaining tags
         .trim();
+      
+      // Skip if content is too short after cleaning
+      if (content.length < 30) return null;
       
       // Generate detailed summary using Claude's completion API
       const summary = await generateDetailedSummary(content, unionName);
@@ -154,7 +184,7 @@ const UnionPosts = () => {
         now.setMinutes(now.getMinutes() - value);
         break;
       default:
-        // If no clear time indicator, assume it's recent
+        // If no clear time indicator, assume it's from today
         break;
     }
     
