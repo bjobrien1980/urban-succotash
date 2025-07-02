@@ -1,3 +1,15 @@
+// 1. CREATE FILE: public/data/iron-ore-price.txt
+// Format: date,price (one entry per line, newest first)
+// Example content:
+/*
+2025-01-27,119.80
+2025-01-20,121.20
+2025-01-13,118.45
+2025-01-06,116.90
+*/
+
+// 2. UPDATE useMarketData.js - Replace the hardcoded iron ore section
+
 import { useState, useCallback } from 'react';
 
 export const useMarketData = () => {
@@ -6,9 +18,9 @@ export const useMarketData = () => {
   // Initial market data state
   const [marketData, setMarketData] = useState({
     ironOre: {
-      price: 118.45,
-      changePercent: +2.42,
-      source: 'Manual Update'
+      price: 'Loading...',
+      changePercent: 0,
+      source: 'Loading...'
     },
     companies: [
       { name: 'BHP Group', ticker: 'BHP.AX', price: 'Loading...', changePercent: '0.00', source: 'Loading...' },
@@ -21,6 +33,56 @@ export const useMarketData = () => {
       { label: 'AUD/USD', value: '0.6785', change: '+0.0045', trend: 'up', source: 'Manual' }
     ]
   });
+
+  // Function to fetch iron ore price from text file
+  const fetchIronOrePrice = async () => {
+    try {
+      console.log('Fetching iron ore price from file...');
+      const response = await fetch('/data/iron-ore-price.txt');
+      const text = await response.text();
+      
+      const lines = text.trim().split('\n').filter(line => line.trim());
+      
+      if (lines.length >= 2) {
+        // Parse current and previous prices
+        const [currentDate, currentPriceStr] = lines[0].split(',');
+        const [previousDate, previousPriceStr] = lines[1].split(',');
+        
+        const currentPrice = parseFloat(currentPriceStr);
+        const previousPrice = parseFloat(previousPriceStr);
+        
+        // Calculate percentage change
+        const changePercent = ((currentPrice - previousPrice) / previousPrice * 100);
+        
+        console.log(`Iron ore: Current $${currentPrice}, Previous $${previousPrice}, Change ${changePercent.toFixed(2)}%`);
+        
+        return {
+          price: currentPrice.toFixed(2),
+          changePercent: changePercent.toFixed(2),
+          source: `Market Index (Updated ${currentDate})`
+        };
+      } else if (lines.length === 1) {
+        // Only one entry, no change calculation
+        const [currentDate, currentPriceStr] = lines[0].split(',');
+        const currentPrice = parseFloat(currentPriceStr);
+        
+        return {
+          price: currentPrice.toFixed(2),
+          changePercent: '0.00',
+          source: `Market Index (Updated ${currentDate})`
+        };
+      } else {
+        throw new Error('No price data found');
+      }
+    } catch (error) {
+      console.error('Error fetching iron ore price:', error);
+      return {
+        price: 'Error',
+        changePercent: '0.00',
+        source: 'File Error'
+      };
+    }
+  };
 
   // Function to fetch stock data from Yahoo Finance
   const fetchStockData = async () => {
@@ -81,30 +143,11 @@ export const useMarketData = () => {
       });
 
       console.log('Processed companies:', companies);
-      
-      setMarketData(prev => ({
-        ironOre: {
-          price: 118.45,
-          changePercent: +2.42,
-          source: 'Manual Update'
-        },
-        companies: companies,
-        economicData: prev.economicData
-      }));
+      return companies;
 
     } catch (error) {
-      console.error('Error fetching market data:', error);
-      
-      // Set error state for all companies
-      setMarketData(prev => ({
-        ...prev,
-        companies: prev.companies.map(company => ({
-          ...company,
-          price: 'Error',
-          changePercent: '0.00',
-          source: 'API Failed'
-        }))
-      }));
+      console.error('Error fetching stock data:', error);
+      return null;
     }
   };
 
@@ -112,7 +155,23 @@ export const useMarketData = () => {
   const refreshMarketData = useCallback(async () => {
     setIsSearching(true);
     try {
-      await fetchStockData();
+      // Fetch both iron ore price and stock data
+      const [ironOreData, companiesData] = await Promise.all([
+        fetchIronOrePrice(),
+        fetchStockData()
+      ]);
+
+      setMarketData(prev => ({
+        ironOre: ironOreData,
+        companies: companiesData || prev.companies.map(company => ({
+          ...company,
+          price: 'Error',
+          changePercent: '0.00',
+          source: 'API Failed'
+        })),
+        economicData: prev.economicData
+      }));
+
     } catch (error) {
       console.error('Error refreshing market data:', error);
     } finally {
