@@ -1,5 +1,5 @@
 // Final UnionPosts Component - src/components/UnionPosts.js
-// Production-ready version with proper post display and thumbnails
+// Production-ready version with proper post display, thumbnails, and DATE SORTING
 
 import React, { useState, useEffect } from 'react';
 import { Users, ExternalLink, Clock, MapPin, AlertCircle, TrendingUp } from 'lucide-react';
@@ -26,7 +26,11 @@ const UnionPosts = () => {
         const parsedPosts = parsePostsData(text);
         console.log(`Successfully parsed ${parsedPosts.length} union posts`);
         
-        setPosts(parsedPosts);
+        // Sort posts by date - newest first
+        const sortedPosts = sortPostsByDate(parsedPosts);
+        console.log('Posts sorted by date (newest first)');
+        
+        setPosts(sortedPosts);
       } catch (err) {
         console.error('Error fetching Facebook posts:', err);
         setError(`Failed to load union posts: ${err.message}`);
@@ -37,6 +41,38 @@ const UnionPosts = () => {
 
     fetchPosts();
   }, []);
+
+  const parsePostDate = (dateString) => {
+    try {
+      // Handle various date formats
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // YYYY-MM-DD format
+        return new Date(dateString);
+      }
+      
+      if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        // DD/MM/YYYY or MM/DD/YYYY format - assume DD/MM/YYYY for Australian context
+        const [day, month, year] = dateString.split('/');
+        return new Date(year, month - 1, day);
+      }
+      
+      // Try to parse any other format
+      return new Date(dateString);
+    } catch (error) {
+      console.error('Error parsing date:', dateString, error);
+      return new Date(0); // Return epoch as fallback
+    }
+  };
+
+  const sortPostsByDate = (posts) => {
+    return posts.sort((a, b) => {
+      const dateA = parsePostDate(a.date);
+      const dateB = parsePostDate(b.date);
+      
+      // Sort descending (newest first)
+      return dateB - dateA;
+    });
+  };
 
   const parsePostsData = (text) => {
     const posts = [];
@@ -110,7 +146,8 @@ const UnionPosts = () => {
               imageUrl: imageUrl,
               category: determineCategory(content),
               urgency: determineUrgency(content),
-              timestamp: formatTimestamp(date)
+              timestamp: formatTimestamp(date),
+              parsedDate: parsePostDate(date) // Store parsed date for sorting
             });
           }
         } catch (error) {
@@ -145,7 +182,7 @@ const UnionPosts = () => {
 
   const formatTimestamp = (dateStr) => {
     try {
-      const postDate = new Date(dateStr);
+      const postDate = parsePostDate(dateStr);
       const now = new Date();
       const diffTime = Math.abs(now - postDate);
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -273,6 +310,7 @@ const UnionPosts = () => {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">
         Union Social Media Updates
         <span className="text-sm text-green-600 ml-2">● Live ({posts.length})</span>
+        <span className="text-xs text-gray-500 ml-2">(Newest First)</span>
       </h2>
       
       <div className="space-y-4">
