@@ -207,7 +207,7 @@ const UnionPosts = () => {
       const lengthPenalty = sentence.length > 200 ? 1 : 0;
       const finalScore = score - lengthPenalty;
       
-      if (finalScore > maxScore && sentence.trim().length > 20 && sentence.trim().length < 250) {
+      if (finalScore > maxScore && sentence.trim().length > 20 && sentence.trim().length < 350) {
         maxScore = finalScore;
         bestSentence = sentence;
       }
@@ -215,7 +215,7 @@ const UnionPosts = () => {
     
     // Clean up the sentence
     const summary = bestSentence.trim();
-    return summary.length > 150 ? summary.substring(0, 150) + '...' : summary;
+    return summary.length > 250 ? summary.substring(0, 250) + '...' : summary;
   };
 
   const parsePostDate = (dateString) => {
