@@ -1,5 +1,5 @@
-// Final UnionPosts Component - src/components/UnionPosts.js
-// Production-ready version with proper post display, thumbnails, DATE SORTING and AI SUMMARIZATION
+// Updated UnionPosts Component with 7-day filtering
+// src/components/UnionPosts.js
 
 import React, { useState, useEffect } from 'react';
 import { Users, ExternalLink, Clock, MapPin, AlertCircle, TrendingUp } from 'lucide-react';
@@ -8,6 +8,7 @@ const UnionPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [allPostsCount, setAllPostsCount] = useState(0); // Track total posts before filtering
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -25,14 +26,19 @@ const UnionPosts = () => {
 
         const parsedPosts = parsePostsData(text);
         console.log(`Successfully parsed ${parsedPosts.length} union posts`);
+        setAllPostsCount(parsedPosts.length);
 
         // Sort posts by date - newest first
         const sortedPosts = sortPostsByDate(parsedPosts);
         console.log('Posts sorted by date (newest first)');
 
-        // Generate intelligent summaries for posts
-        const postsWithSummaries = generateIntelligentSummaries(sortedPosts);
-        console.log('Generated intelligent summaries for posts');
+        // FILTER POSTS TO ONLY SHOW LAST 7 DAYS
+        const recentPosts = filterRecentPosts(sortedPosts, 7);
+        console.log(`Filtered to ${recentPosts.length} posts from last 7 days (from ${parsedPosts.length} total)`);
+
+        // Generate intelligent summaries for recent posts only
+        const postsWithSummaries = generateIntelligentSummaries(recentPosts);
+        console.log('Generated intelligent summaries for recent posts');
 
         setPosts(postsWithSummaries);
       } catch (err) {
@@ -45,6 +51,34 @@ const UnionPosts = () => {
 
     fetchPosts();
   }, []);
+
+  // NEW FUNCTION: Filter posts to only show those from the last N days
+  const filterRecentPosts = (posts, daysBack = 7) => {
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    
+    console.log(`Filtering posts from ${cutoffDate.toLocaleDateString()} onwards (${daysBack} days back)`);
+    
+    const recentPosts = posts.filter(post => {
+      const postDate = parsePostDate(post.date);
+      
+      // Handle invalid dates
+      if (isNaN(postDate.getTime())) {
+        console.warn('Invalid date found in post:', post.date, post.union);
+        return false;
+      }
+      
+      const isRecent = postDate >= cutoffDate;
+      
+      if (!isRecent) {
+        console.log(`Filtering out old post: ${post.union} - ${post.date} (${postDate.toLocaleDateString()})`);
+      }
+      
+      return isRecent;
+    });
+    
+    return recentPosts;
+  };
 
   // Generate intelligent summaries based on content analysis
   const generateIntelligentSummaries = (posts) => {
@@ -486,7 +520,7 @@ const UnionPosts = () => {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">
         Union Social Media Updates
         <span className="text-sm text-green-600 ml-2">● Live ({posts.length})</span>
-        <span className="text-xs text-gray-500 ml-2">(Newest First • Smart Summaries)</span>
+        <span className="text-xs text-gray-500 ml-2">(Last 7 Days • {allPostsCount} total posts)</span>
       </h2>
 
       <div className="space-y-4">
@@ -560,8 +594,11 @@ const UnionPosts = () => {
         {posts.length === 0 && (
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No union posts found</h3>
-            <p className="text-gray-600">Union social media updates will appear here when available.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No recent union posts</h3>
+            <p className="text-gray-600">
+              No union social media posts from the last 7 days.
+              {allPostsCount > 0 && ` (${allPostsCount} total posts in archive)`}
+            </p>
           </div>
         )}
       </div>
