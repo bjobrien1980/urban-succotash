@@ -127,6 +127,17 @@ const MarketOverview = ({ marketData }) => {
                 <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
                   Source: {marketData.ironOre.source}
                 </div>
+                
+                {/* Explanatory content for Iron Ore Price */}
+                <div className="mt-4 p-3 bg-orange-50 rounded-md border border-orange-100">
+                  <h4 className="text-xs font-semibold text-orange-800 mb-2">Understanding Iron Ore Pricing</h4>
+                  <div className="space-y-2 text-xs text-orange-700">
+                    <p><strong>CFR:</strong> Cost and Freight - price includes shipping to Chinese ports</p>
+                    <p><strong>Benchmark:</strong> 62% Fe content fines, the global standard for iron ore quality</p>
+                    <p><strong>Impact:</strong> Higher prices boost WA miner revenues and regional employment</p>
+                    <p><strong>Drivers:</strong> Chinese steel demand, supply disruptions, economic growth</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -195,6 +206,17 @@ const MarketOverview = ({ marketData }) => {
                 
                 <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
                   Source: {marketData.companies[0]?.source || 'Yahoo Finance'}
+                </div>
+                
+                {/* Explanatory content for Major Miners */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+                  <h4 className="text-xs font-semibold text-blue-800 mb-2">WA Iron Ore Giants</h4>
+                  <div className="space-y-2 text-xs text-blue-700">
+                    <p><strong>BHP Group:</strong> World's largest mining company, Pilbara operations include Mt Whaleback</p>
+                    <p><strong>Rio Tinto:</strong> Major Pilbara producer, operates multiple mines and rail infrastructure</p>
+                    <p><strong>Fortescue:</strong> Third-largest iron ore producer, significant WA employer and exporter</p>
+                    <p><strong>Market Impact:</strong> These companies drive WA's economy and employment in mining regions</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -270,6 +292,19 @@ const MarketOverview = ({ marketData }) => {
                       if (ratio >= 0.33) return "🔸 Mixed economic signals";
                       return "🔸 Economic headwinds present";
                     })()}
+                  </div>
+                </div>
+                
+                {/* Explanatory content for Key Indicators */}
+                <div className="mt-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-2">Why These Indicators Matter</h4>
+                  <div className="space-y-1 text-xs text-gray-700">
+                    <p><strong>CPI:</strong> Rising inflation can pressure interest rates and economic growth</p>
+                    <p><strong>WA Unemployment:</strong> Lower unemployment indicates strong regional mining employment</p>
+                    <p><strong>AUD/USD:</strong> Weaker AUD makes Australian exports more competitive globally</p>
+                    <p><strong>China PMI:</strong> Above 50 indicates expanding manufacturing, driving iron ore demand</p>
+                    <p><strong>Baltic Dry:</strong> Shipping costs affect the final delivered price of iron ore</p>
+                    <p><strong>Steel Production:</strong> Higher Chinese steel output directly increases iron ore consumption</p>
                   </div>
                 </div>
                 
