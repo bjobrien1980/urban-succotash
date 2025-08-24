@@ -1,4 +1,4 @@
-// Updated UnionPosts Component with 7-day filtering
+// Updated UnionPosts Component with 7-day filtering and longer summaries
 // src/components/UnionPosts.js
 
 import React, { useState, useEffect } from 'react';
@@ -119,7 +119,8 @@ const UnionPosts = () => {
         summary = extractGeneralSummary(cleanContent, union);
     }
     
-    return summary || (cleanContent.length > 150 ? cleanContent.substring(0, 150) + '...' : cleanContent);
+    // Increased max length from 150 to 400 for fallback
+    return summary || (cleanContent.length > 400 ? cleanContent.substring(0, 400) + '...' : cleanContent);
   };
 
   const extractStrikeSummary = (content, union) => {
@@ -222,7 +223,8 @@ const UnionPosts = () => {
     const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 15);
     
     if (sentences.length === 0) {
-      return content.length > 150 ? content.substring(0, 150) + '...' : content;
+      // Increased max length from 150 to 400
+      return content.length > 400 ? content.substring(0, 400) + '...' : content;
     }
 
     // Prioritize sentences with key union terms
@@ -237,19 +239,20 @@ const UnionPosts = () => {
         return sum + (lowerSentence.includes(term) ? 1 : 0);
       }, 0);
       
-      // Prefer shorter, more concise sentences
-      const lengthPenalty = sentence.length > 200 ? 1 : 0;
+      // Adjusted length penalty for longer summaries (increased from 200 to 400)
+      const lengthPenalty = sentence.length > 400 ? 1 : 0;
       const finalScore = score - lengthPenalty;
       
-      if (finalScore > maxScore && sentence.trim().length > 20 && sentence.trim().length < 350) {
+      // Increased max acceptable length from 350 to 500
+      if (finalScore > maxScore && sentence.trim().length > 20 && sentence.trim().length < 500) {
         maxScore = finalScore;
         bestSentence = sentence;
       }
     });
     
-    // Clean up the sentence
+    // Clean up the sentence - increased max length from 250 to 400
     const summary = bestSentence.trim();
-    return summary.length > 250 ? summary.substring(0, 250) + '...' : summary;
+    return summary.length > 400 ? summary.substring(0, 400) + '...' : summary;
   };
 
   const parsePostDate = (dateString) => {
